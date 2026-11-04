@@ -16,6 +16,8 @@ Necesita [`gh`](https://cli.github.com/) autenticado.
 
 ## `matriz.csv`
 
-La matriz de trazabilidad: caso de uso, función, módulo, tipo, fase y prioridad de las 117 funciones.
+La matriz de trazabilidad: caso de uso, función, módulo, tipo, fase y prioridad de las 117 funciones. Separado por comas, para que GitHub lo muestre como tabla ordenable.
 
-**Ojo con tener dos registros:** el seguimiento vivo (quién lo hace, por dónde va) son los issues de GitHub, no este fichero. Aquí solo está el análisis, que no cambia a diario.
+**Aquí solo está el análisis.** No lleva columnas de responsable ni de estado a propósito: el seguimiento vivo son los **issues**, que se actualizan solos al cerrar un pull request. Dos registros en paralelo siempre acaban descuadrados.
+
+Este fichero solo se toca cuando **se añade o se quita una función**, y entonces se vuelve a lanzar `crear_issues.py`, que no duplica los que ya existen.

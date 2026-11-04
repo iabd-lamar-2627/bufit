@@ -117,7 +117,7 @@ def main():
     ap.add_argument("--solo-fase", default=None, help="por ejemplo 1")
     args = ap.parse_args()
 
-    filas = list(csv.DictReader(MATRIZ.open(encoding="utf-8"), delimiter=";"))
+    filas = list(csv.DictReader(MATRIZ.open(encoding="utf-8")))
     if args.solo_fase:
         filas = [f for f in filas if f["Fase"].startswith(args.solo_fase)]
 

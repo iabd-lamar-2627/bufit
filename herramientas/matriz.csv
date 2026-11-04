@@ -1,118 +1,118 @@
-CU;Caso de uso;Codigo;Funcion;Modulo;Tipo;Fase;Prioridad;Ficha de requisitos;Prueba;Responsable;Estado
-F0;Funciones transversales;F0.1;Capturar y transcribir la voz;Escucha;Funcional;1;Must;Si;;;Pendiente
-F0;Funciones transversales;F0.2;Detectar el idioma hablado;Escucha;Funcional;2;Won't;Pendiente;;;Pendiente
-F0;Funciones transversales;F0.3;Aislar la voz del ruido de fondo;Escucha;No funcional;1;Should;Si;;;Pendiente
-F0;Funciones transversales;F0.4;Cancelar el eco de la propia voz;Escucha;No funcional;1;Should;Si;;;Pendiente
-F0;Funciones transversales;F0.5;Detectar que el jugador empieza a hablar;Escucha;Funcional;1;Should;Si;;;Pendiente
-F0;Funciones transversales;F0.6;Clasificar la intención de una frase;Intenciones;Funcional;1;Must;Si;;;Pendiente
-F0;Funciones transversales;F0.7;Generar una respuesta conversacional;Diálogo;Funcional;1;Should;Si;;;Pendiente
-F0;Funciones transversales;F0.8;Sintetizar y reproducir voz;Voz;Funcional;1;Must;Si;;;Pendiente
-F0;Funciones transversales;F0.9;Interrumpir la locución en curso;Voz;Funcional;1;Should;Si;;;Pendiente
-F0;Funciones transversales;F0.10;Reproducir una frase de relleno;Voz;No funcional;1;Could;Si;;;Pendiente
-F0;Funciones transversales;F0.11;Mostrar la expresión de los ojos;Cara y pantalla;Funcional;1;Must;Si;;;Pendiente
-F0;Funciones transversales;F0.12;Leer el estado de la mesa;Visión de mesa;Funcional;1;Must;Si;;;Pendiente
-F0;Funciones transversales;F0.13;Detectar una mano sobre la zona de juego;Visión de mesa;Funcional;1;Must;Si;;;Pendiente
-F0;Funciones transversales;F0.14;Comprobar las condiciones de iluminación;Visión de mesa;No funcional;1;Could;Si;;;Pendiente
-F0;Funciones transversales;F0.15;Leer el contenido del atril;Visión de atril;Funcional;1;Must;Si;;;Pendiente
-F0;Funciones transversales;F0.16;Localizar el atril mediante marcadores;Visión de atril;No funcional;2;Won't;Pendiente;;;Pendiente
-F0;Funciones transversales;F0.17;Publicar el estado de la partida;Estado de partida;Funcional;1;Must;Si;;;Pendiente
-F0;Funciones transversales;F0.18;Guardar y recuperar el estado;Estado de partida;Funcional;1;Should;Si;;;Pendiente
-F0;Funciones transversales;F0.19;Registrar los eventos del sistema;Registro;No funcional;1;Must;Si;;;Pendiente
-F0;Funciones transversales;F0.20;Vigilar la disponibilidad de los módulos;Orquestador;No funcional;1;Should;Si;;;Pendiente
-F0;Funciones transversales;F0.21;Informar al jugador de una avería;Orquestador;No funcional;1;Should;Si;;;Pendiente
-CU1;Iniciar sesión y reconocer al jugador;F1.1;Detectar la presencia de una persona;Visión de mesa;Funcional;1;Should;Si;;;Pendiente
-CU1;Iniciar sesión y reconocer al jugador;F1.2;Abrir la sesión y saludar;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU1;Iniciar sesión y reconocer al jugador;F1.3;Solicitar la identificación del jugador;Orquestador;Funcional;2;Won't;Pendiente;;;Pendiente
-CU1;Iniciar sesión y reconocer al jugador;F1.4;Buscar un perfil por mote;Perfil;Funcional;2;Won't;Pendiente;;;Pendiente
-CU1;Iniciar sesión y reconocer al jugador;F1.5;Crear un perfil nuevo;Perfil;Funcional;2;Won't;Pendiente;;;Pendiente
-CU1;Iniciar sesión y reconocer al jugador;F1.6;Fijar y confirmar el idioma de la sesión;Orquestador;Funcional;2;Won't;Pendiente;;;Pendiente
-CU1;Iniciar sesión y reconocer al jugador;F1.7;Volver a la espera por falta de respuesta;Orquestador;Funcional;1;Could;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.1;Listar los juegos disponibles;Orquestador;Funcional;1;Should;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.2;Mostrar el menú de juegos;Cara y pantalla;Funcional;1;Could;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.3;Cargar los parámetros del juego elegido;Motor de reglas;Funcional;1;Must;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.4;Explicar cómo preparar la partida;Diálogo;Funcional;1;Must;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.5;Comprobar el número de fichas del atril;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.6;Solicitar la recolocación de fichas ilegibles;Orquestador;Funcional;1;Should;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.7;Comprobar que la zona de juego está despejada;Visión de mesa;Funcional;1;Could;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.8;Inicializar el estado de la partida;Estado de partida;Funcional;1;Must;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.9;Determinar quién inicia la partida;Motor de reglas;Funcional;1;Must;Si;;;Pendiente
-CU2;Elegir juego y preparar la partida;F2.10;Anunciar el comienzo de la partida;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU3;El jugador juega su ficha;F3.1;Anunciar el turno del jugador;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU3;El jugador juega su ficha;F3.2;Detectar que se ha colocado una ficha nueva;Visión de mesa;Funcional;1;Must;Si;;;Pendiente
-CU3;El jugador juega su ficha;F3.3;Confirmar el fin del turno del jugador;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU3;El jugador juega su ficha;F3.4;Preguntar al jugador si ha terminado;Orquestador;Funcional;1;Should;Si;;;Pendiente
-CU3;El jugador juega su ficha;F3.5;Validar la legalidad de una jugada;Motor de reglas;Funcional;1;Must;Si;;;Pendiente
-CU3;El jugador juega su ficha;F3.6;Aplicar una jugada al estado;Motor de reglas;Funcional;1;Must;Si;;;Pendiente
-CU3;El jugador juega su ficha;F3.7;Comentar la jugada del jugador;Diálogo;Funcional;1;Could;Si;;;Pendiente
-CU3;El jugador juega su ficha;F3.8;Actualizar el marcador en pantalla;Cara y pantalla;Funcional;1;Should;Si;;;Pendiente
-CU3;El jugador juega su ficha;F3.9;Solicitar una lectura de mayor calidad;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU4;Bufit juega su ficha;F4.1;Obtener las jugadas legales de Bufit;Motor de reglas;Funcional;1;Must;Si;;;Pendiente
-CU4;Bufit juega su ficha;F4.2;Elegir una jugada según el nivel;Selector de jugada;Funcional;1 (azar), 3 (modelo);Must;Si;;;Pendiente
-CU4;Bufit juega su ficha;F4.3;Narrar la jugada de Bufit;Diálogo;Funcional;1;Must;Si;;;Pendiente
-CU4;Bufit juega su ficha;F4.4;Señalar en pantalla la ficha elegida;Cara y pantalla;Funcional;1;Must;Si;;;Pendiente
-CU4;Bufit juega su ficha;F4.5;Seguir la posición del dedo sobre el atril;Visión de atril;Funcional;2;Won't;Pendiente;;;Pendiente
-CU4;Bufit juega su ficha;F4.6;Acompañar el dedo con el indicador;Cara y pantalla;Funcional;2;Won't;Pendiente;;;Pendiente
-CU4;Bufit juega su ficha;F4.7;Confirmar la ficha señalada;Orquestador;Funcional;2;Won't;Pendiente;;;Pendiente
-CU4;Bufit juega su ficha;F4.8;Indicar la ficha de viva voz;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU4;Bufit juega su ficha;F4.9;Verificar que se ha colocado la ficha indicada;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU4;Bufit juega su ficha;F4.10;Detectar que el jugador no mueve la ficha;Orquestador;Funcional;1;Should;Si;;;Pendiente
-CU4;Bufit juega su ficha;F4.11;Retirar la ficha jugada de la mano de Bufit;Estado de partida;Funcional;1;Must;Si;;;Pendiente
-CU5;Robar del pozo;F5.1;Detectar que Bufit no tiene jugada posible;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU5;Robar del pozo;F5.2;Solicitar el robo de una ficha;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU5;Robar del pozo;F5.3;Detectar una ficha nueva en el atril;Visión de atril;Funcional;1;Must;Si;;;Pendiente
-CU5;Robar del pozo;F5.4;Detectar una ficha colocada al revés;Visión de atril;Funcional;1;Could;Si;;;Pendiente
-CU5;Robar del pozo;F5.5;Incorporar la ficha robada a la mano;Estado de partida;Funcional;1;Must;Si;;;Pendiente
-CU5;Robar del pozo;F5.6;Contar las fichas del pozo;Visión de mesa;Funcional;2;Won't;Pendiente;;;Pendiente
-CU5;Robar del pozo;F5.7;Llevar la cuenta del pozo;Estado de partida;Funcional;1;Must;Si;;;Pendiente
-CU5;Robar del pozo;F5.8;Pasar turno por imposibilidad de jugar;Motor de reglas;Funcional;1;Must;Si;;;Pendiente
-CU6;Conversar durante la partida;F6.1;Resumir el estado para la conversación;Estado de partida;Funcional;1;Should;Si;;;Pendiente
-CU6;Conversar durante la partida;F6.2;Reconducir la conversación al juego;Diálogo;Funcional;1;Could;Si;;;Pendiente
-CU6;Conversar durante la partida;F6.3;Filtrar temas inapropiados;Diálogo;No funcional;1;Should;Si;;;Pendiente
-CU6;Conversar durante la partida;F6.4;Pedir que repita lo dicho;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU6;Conversar durante la partida;F6.5;Ajustar el ritmo de la locución al jugador;Voz;No funcional;2;Won't;Pendiente;;;Pendiente
-CU7;Consultar las reglas o pedir ayuda;F7.1;Clasificar el tipo de consulta;Intenciones;Funcional;1;Should;Si;;;Pendiente
-CU7;Consultar las reglas o pedir ayuda;F7.2;Explicar una regla del juego;Diálogo;Funcional;1;Should;Si;;;Pendiente
-CU7;Consultar las reglas o pedir ayuda;F7.3;Calcular información pública para pistas;Motor de reglas;Funcional;1;Could;Si;;;Pendiente
-CU7;Consultar las reglas o pedir ayuda;F7.4;Generar una pista sin ver la mano del jugador;Diálogo;Funcional;1;Could;Si;;;Pendiente
-CU7;Consultar las reglas o pedir ayuda;F7.5;Confirmar que la explicación ha quedado clara;Orquestador;Funcional;1;Could;Si;;;Pendiente
-CU8;Resolver una incidencia en la mesa;F8.1;Detectar una discrepancia entre la mesa y el estado;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU8;Resolver una incidencia en la mesa;F8.2;Detectar que la cadena se sale del campo;Visión de mesa;Funcional;1;Must;Si;;;Pendiente
-CU8;Resolver una incidencia en la mesa;F8.3;Detectar una ficha ilegible o mal colocada;Visión de mesa;Funcional;1;Should;Si;;;Pendiente
-CU8;Resolver una incidencia en la mesa;F8.4;Comunicar la incidencia con tacto;Diálogo;Funcional;1;Must;Si;;;Pendiente
-CU8;Resolver una incidencia en la mesa;F8.5;Proponer la corrección concreta;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU8;Resolver una incidencia en la mesa;F8.6;Revertir una jugada no válida;Estado de partida;Funcional;1;Must;Si;;;Pendiente
-CU8;Resolver una incidencia en la mesa;F8.7;Aceptar la versión del jugador;Orquestador;Funcional;1;Must;Si;;;Pendiente
-CU8;Resolver una incidencia en la mesa;F8.8;Ofrecer ayuda tras incidencias repetidas;Orquestador;Funcional;2;Won't;Pendiente;;;Pendiente
-CU9;Pausar y reanudar;F9.1;Detectar inactividad prolongada;Orquestador;Funcional;1;Could;Si;;;Pendiente
-CU9;Pausar y reanudar;F9.2;Pausar la partida;Estado de partida;Funcional;1;Should;Si;;;Pendiente
-CU9;Pausar y reanudar;F9.3;Confirmar la pausa al jugador;Orquestador;Funcional;1;Should;Si;;;Pendiente
-CU9;Pausar y reanudar;F9.4;Reanudar la partida;Orquestador;Funcional;1;Should;Si;;;Pendiente
-CU9;Pausar y reanudar;F9.5;Resumir cómo iba la partida;Diálogo;Funcional;1;Could;Si;;;Pendiente
-CU9;Pausar y reanudar;F9.6;Comprobar que la mesa no ha cambiado;Visión de mesa;Funcional;2;Won't;Pendiente;;;Pendiente
-CU9;Pausar y reanudar;F9.7;Cerrar la partida por ausencia prolongada;Orquestador;Funcional;1;Could;Si;;;Pendiente
-CU10;Terminar la partida;F10.1;Detectar el fin de la partida;Motor de reglas;Funcional;1;Must;Si;;;Pendiente
-CU10;Terminar la partida;F10.2;Calcular la puntuación final;Motor de reglas;Funcional;1;Must;Si;;;Pendiente
-CU10;Terminar la partida;F10.3;Anunciar el resultado con deportividad;Diálogo;Funcional;1;Must;Si;;;Pendiente
-CU10;Terminar la partida;F10.4;Comentar el desarrollo de la partida;Diálogo;Funcional;2;Won't;Pendiente;;;Pendiente
-CU10;Terminar la partida;F10.5;Explicar el recuento ficha a ficha;Diálogo;Funcional;1;Could;Si;;;Pendiente
-CU10;Terminar la partida;F10.6;Guardar el resultado en el histórico;Perfil;Funcional;2;Won't;Pendiente;;;Pendiente
-CU10;Terminar la partida;F10.7;Ofrecer la revancha;Orquestador;Funcional;1;Should;Si;;;Pendiente
-CU11;Adaptar la dificultad al jugador;F11.1;Registrar las métricas de juego;Estado de partida;Funcional;2;Won't;Pendiente;;;Pendiente
-CU11;Adaptar la dificultad al jugador;F11.2;Evaluar el desempeño del jugador;Selector de jugada;Funcional;2;Won't;Pendiente;;;Pendiente
-CU11;Adaptar la dificultad al jugador;F11.3;Ajustar el nivel de juego;Selector de jugada;Funcional;2;Won't;Pendiente;;;Pendiente
-CU11;Adaptar la dificultad al jugador;F11.4;Ajustar el ritmo de la partida;Orquestador;Funcional;2;Won't;Pendiente;;;Pendiente
-CU11;Adaptar la dificultad al jugador;F11.5;Respetar la negativa a recibir ayuda;Orquestador;Funcional;2;Won't;Pendiente;;;Pendiente
-CU11;Adaptar la dificultad al jugador;F11.6;Detectar signos de cansancio;Orquestador;Funcional;3;Won't;Pendiente;;;Pendiente
-CU11;Adaptar la dificultad al jugador;F11.7;Guardar el nivel alcanzado;Perfil;Funcional;2;Won't;Pendiente;;;Pendiente
-CU12;Jugar un juego de pantalla;F12.1;Listar los juegos de pantalla;Juegos de pantalla;Funcional;1;Should;Si;;;Pendiente
-CU12;Jugar un juego de pantalla;F12.2;Generar un reto de cálculo mental;Juegos de pantalla;Funcional;1;Should;Si;;;Pendiente
-CU12;Jugar un juego de pantalla;F12.3;Generar un reto de palabras;Juegos de pantalla;Funcional;1;Could;Si;;;Pendiente
-CU12;Jugar un juego de pantalla;F12.4;Mostrar el reto en pantalla;Cara y pantalla;Funcional;1;Should;Si;;;Pendiente
-CU12;Jugar un juego de pantalla;F12.5;Evaluar la respuesta hablada;Juegos de pantalla;Funcional;1;Should;Si;;;Pendiente
-CU12;Jugar un juego de pantalla;F12.6;Dar la respuesta y comentarla;Juegos de pantalla;Funcional;1;Should;Si;;;Pendiente
-CU12;Jugar un juego de pantalla;F12.7;Ajustar la dificultad del reto;Juegos de pantalla;Funcional;1;Could;Si;;;Pendiente
-CU12;Jugar un juego de pantalla;F12.8;Resumir la sesión de juego;Juegos de pantalla;Funcional;1;Could;Si;;;Pendiente
-CU13;Cerrar la sesión;F13.1;Detectar el fin de la sesión;Orquestador;Funcional;1;Should;Si;;;Pendiente
-CU13;Cerrar la sesión;F13.2;Despedirse;Diálogo;Funcional;1;Should;Si;;;Pendiente
-CU13;Cerrar la sesión;F13.3;Guardar una partida sin terminar;Estado de partida;Funcional;2;Won't;Pendiente;;;Pendiente
-CU13;Cerrar la sesión;F13.4;Volver al estado de espera;Orquestador;Funcional;1;Should;Si;;;Pendiente
+CU,Caso de uso,Codigo,Funcion,Modulo,Tipo,Fase,Prioridad,Ficha de requisitos
+F0,Funciones transversales,F0.1,Capturar y transcribir la voz,Escucha,Funcional,1,Must,Si
+F0,Funciones transversales,F0.2,Detectar el idioma hablado,Escucha,Funcional,2,Won't,Pendiente
+F0,Funciones transversales,F0.3,Aislar la voz del ruido de fondo,Escucha,No funcional,1,Should,Si
+F0,Funciones transversales,F0.4,Cancelar el eco de la propia voz,Escucha,No funcional,1,Should,Si
+F0,Funciones transversales,F0.5,Detectar que el jugador empieza a hablar,Escucha,Funcional,1,Should,Si
+F0,Funciones transversales,F0.6,Clasificar la intención de una frase,Intenciones,Funcional,1,Must,Si
+F0,Funciones transversales,F0.7,Generar una respuesta conversacional,Diálogo,Funcional,1,Should,Si
+F0,Funciones transversales,F0.8,Sintetizar y reproducir voz,Voz,Funcional,1,Must,Si
+F0,Funciones transversales,F0.9,Interrumpir la locución en curso,Voz,Funcional,1,Should,Si
+F0,Funciones transversales,F0.10,Reproducir una frase de relleno,Voz,No funcional,1,Could,Si
+F0,Funciones transversales,F0.11,Mostrar la expresión de los ojos,Cara y pantalla,Funcional,1,Must,Si
+F0,Funciones transversales,F0.12,Leer el estado de la mesa,Visión de mesa,Funcional,1,Must,Si
+F0,Funciones transversales,F0.13,Detectar una mano sobre la zona de juego,Visión de mesa,Funcional,1,Must,Si
+F0,Funciones transversales,F0.14,Comprobar las condiciones de iluminación,Visión de mesa,No funcional,1,Could,Si
+F0,Funciones transversales,F0.15,Leer el contenido del atril,Visión de atril,Funcional,1,Must,Si
+F0,Funciones transversales,F0.16,Localizar el atril mediante marcadores,Visión de atril,No funcional,2,Won't,Pendiente
+F0,Funciones transversales,F0.17,Publicar el estado de la partida,Estado de partida,Funcional,1,Must,Si
+F0,Funciones transversales,F0.18,Guardar y recuperar el estado,Estado de partida,Funcional,1,Should,Si
+F0,Funciones transversales,F0.19,Registrar los eventos del sistema,Registro,No funcional,1,Must,Si
+F0,Funciones transversales,F0.20,Vigilar la disponibilidad de los módulos,Orquestador,No funcional,1,Should,Si
+F0,Funciones transversales,F0.21,Informar al jugador de una avería,Orquestador,No funcional,1,Should,Si
+CU1,Iniciar sesión y reconocer al jugador,F1.1,Detectar la presencia de una persona,Visión de mesa,Funcional,1,Should,Si
+CU1,Iniciar sesión y reconocer al jugador,F1.2,Abrir la sesión y saludar,Orquestador,Funcional,1,Must,Si
+CU1,Iniciar sesión y reconocer al jugador,F1.3,Solicitar la identificación del jugador,Orquestador,Funcional,2,Won't,Pendiente
+CU1,Iniciar sesión y reconocer al jugador,F1.4,Buscar un perfil por mote,Perfil,Funcional,2,Won't,Pendiente
+CU1,Iniciar sesión y reconocer al jugador,F1.5,Crear un perfil nuevo,Perfil,Funcional,2,Won't,Pendiente
+CU1,Iniciar sesión y reconocer al jugador,F1.6,Fijar y confirmar el idioma de la sesión,Orquestador,Funcional,2,Won't,Pendiente
+CU1,Iniciar sesión y reconocer al jugador,F1.7,Volver a la espera por falta de respuesta,Orquestador,Funcional,1,Could,Si
+CU2,Elegir juego y preparar la partida,F2.1,Listar los juegos disponibles,Orquestador,Funcional,1,Should,Si
+CU2,Elegir juego y preparar la partida,F2.2,Mostrar el menú de juegos,Cara y pantalla,Funcional,1,Could,Si
+CU2,Elegir juego y preparar la partida,F2.3,Cargar los parámetros del juego elegido,Motor de reglas,Funcional,1,Must,Si
+CU2,Elegir juego y preparar la partida,F2.4,Explicar cómo preparar la partida,Diálogo,Funcional,1,Must,Si
+CU2,Elegir juego y preparar la partida,F2.5,Comprobar el número de fichas del atril,Orquestador,Funcional,1,Must,Si
+CU2,Elegir juego y preparar la partida,F2.6,Solicitar la recolocación de fichas ilegibles,Orquestador,Funcional,1,Should,Si
+CU2,Elegir juego y preparar la partida,F2.7,Comprobar que la zona de juego está despejada,Visión de mesa,Funcional,1,Could,Si
+CU2,Elegir juego y preparar la partida,F2.8,Inicializar el estado de la partida,Estado de partida,Funcional,1,Must,Si
+CU2,Elegir juego y preparar la partida,F2.9,Determinar quién inicia la partida,Motor de reglas,Funcional,1,Must,Si
+CU2,Elegir juego y preparar la partida,F2.10,Anunciar el comienzo de la partida,Orquestador,Funcional,1,Must,Si
+CU3,El jugador juega su ficha,F3.1,Anunciar el turno del jugador,Orquestador,Funcional,1,Must,Si
+CU3,El jugador juega su ficha,F3.2,Detectar que se ha colocado una ficha nueva,Visión de mesa,Funcional,1,Must,Si
+CU3,El jugador juega su ficha,F3.3,Confirmar el fin del turno del jugador,Orquestador,Funcional,1,Must,Si
+CU3,El jugador juega su ficha,F3.4,Preguntar al jugador si ha terminado,Orquestador,Funcional,1,Should,Si
+CU3,El jugador juega su ficha,F3.5,Validar la legalidad de una jugada,Motor de reglas,Funcional,1,Must,Si
+CU3,El jugador juega su ficha,F3.6,Aplicar una jugada al estado,Motor de reglas,Funcional,1,Must,Si
+CU3,El jugador juega su ficha,F3.7,Comentar la jugada del jugador,Diálogo,Funcional,1,Could,Si
+CU3,El jugador juega su ficha,F3.8,Actualizar el marcador en pantalla,Cara y pantalla,Funcional,1,Should,Si
+CU3,El jugador juega su ficha,F3.9,Solicitar una lectura de mayor calidad,Orquestador,Funcional,1,Must,Si
+CU4,Bufit juega su ficha,F4.1,Obtener las jugadas legales de Bufit,Motor de reglas,Funcional,1,Must,Si
+CU4,Bufit juega su ficha,F4.2,Elegir una jugada según el nivel,Selector de jugada,Funcional,"1 (azar), 3 (modelo)",Must,Si
+CU4,Bufit juega su ficha,F4.3,Narrar la jugada de Bufit,Diálogo,Funcional,1,Must,Si
+CU4,Bufit juega su ficha,F4.4,Señalar en pantalla la ficha elegida,Cara y pantalla,Funcional,1,Must,Si
+CU4,Bufit juega su ficha,F4.5,Seguir la posición del dedo sobre el atril,Visión de atril,Funcional,2,Won't,Pendiente
+CU4,Bufit juega su ficha,F4.6,Acompañar el dedo con el indicador,Cara y pantalla,Funcional,2,Won't,Pendiente
+CU4,Bufit juega su ficha,F4.7,Confirmar la ficha señalada,Orquestador,Funcional,2,Won't,Pendiente
+CU4,Bufit juega su ficha,F4.8,Indicar la ficha de viva voz,Orquestador,Funcional,1,Must,Si
+CU4,Bufit juega su ficha,F4.9,Verificar que se ha colocado la ficha indicada,Orquestador,Funcional,1,Must,Si
+CU4,Bufit juega su ficha,F4.10,Detectar que el jugador no mueve la ficha,Orquestador,Funcional,1,Should,Si
+CU4,Bufit juega su ficha,F4.11,Retirar la ficha jugada de la mano de Bufit,Estado de partida,Funcional,1,Must,Si
+CU5,Robar del pozo,F5.1,Detectar que Bufit no tiene jugada posible,Orquestador,Funcional,1,Must,Si
+CU5,Robar del pozo,F5.2,Solicitar el robo de una ficha,Orquestador,Funcional,1,Must,Si
+CU5,Robar del pozo,F5.3,Detectar una ficha nueva en el atril,Visión de atril,Funcional,1,Must,Si
+CU5,Robar del pozo,F5.4,Detectar una ficha colocada al revés,Visión de atril,Funcional,1,Could,Si
+CU5,Robar del pozo,F5.5,Incorporar la ficha robada a la mano,Estado de partida,Funcional,1,Must,Si
+CU5,Robar del pozo,F5.6,Contar las fichas del pozo,Visión de mesa,Funcional,2,Won't,Pendiente
+CU5,Robar del pozo,F5.7,Llevar la cuenta del pozo,Estado de partida,Funcional,1,Must,Si
+CU5,Robar del pozo,F5.8,Pasar turno por imposibilidad de jugar,Motor de reglas,Funcional,1,Must,Si
+CU6,Conversar durante la partida,F6.1,Resumir el estado para la conversación,Estado de partida,Funcional,1,Should,Si
+CU6,Conversar durante la partida,F6.2,Reconducir la conversación al juego,Diálogo,Funcional,1,Could,Si
+CU6,Conversar durante la partida,F6.3,Filtrar temas inapropiados,Diálogo,No funcional,1,Should,Si
+CU6,Conversar durante la partida,F6.4,Pedir que repita lo dicho,Orquestador,Funcional,1,Must,Si
+CU6,Conversar durante la partida,F6.5,Ajustar el ritmo de la locución al jugador,Voz,No funcional,2,Won't,Pendiente
+CU7,Consultar las reglas o pedir ayuda,F7.1,Clasificar el tipo de consulta,Intenciones,Funcional,1,Should,Si
+CU7,Consultar las reglas o pedir ayuda,F7.2,Explicar una regla del juego,Diálogo,Funcional,1,Should,Si
+CU7,Consultar las reglas o pedir ayuda,F7.3,Calcular información pública para pistas,Motor de reglas,Funcional,1,Could,Si
+CU7,Consultar las reglas o pedir ayuda,F7.4,Generar una pista sin ver la mano del jugador,Diálogo,Funcional,1,Could,Si
+CU7,Consultar las reglas o pedir ayuda,F7.5,Confirmar que la explicación ha quedado clara,Orquestador,Funcional,1,Could,Si
+CU8,Resolver una incidencia en la mesa,F8.1,Detectar una discrepancia entre la mesa y el estado,Orquestador,Funcional,1,Must,Si
+CU8,Resolver una incidencia en la mesa,F8.2,Detectar que la cadena se sale del campo,Visión de mesa,Funcional,1,Must,Si
+CU8,Resolver una incidencia en la mesa,F8.3,Detectar una ficha ilegible o mal colocada,Visión de mesa,Funcional,1,Should,Si
+CU8,Resolver una incidencia en la mesa,F8.4,Comunicar la incidencia con tacto,Diálogo,Funcional,1,Must,Si
+CU8,Resolver una incidencia en la mesa,F8.5,Proponer la corrección concreta,Orquestador,Funcional,1,Must,Si
+CU8,Resolver una incidencia en la mesa,F8.6,Revertir una jugada no válida,Estado de partida,Funcional,1,Must,Si
+CU8,Resolver una incidencia en la mesa,F8.7,Aceptar la versión del jugador,Orquestador,Funcional,1,Must,Si
+CU8,Resolver una incidencia en la mesa,F8.8,Ofrecer ayuda tras incidencias repetidas,Orquestador,Funcional,2,Won't,Pendiente
+CU9,Pausar y reanudar,F9.1,Detectar inactividad prolongada,Orquestador,Funcional,1,Could,Si
+CU9,Pausar y reanudar,F9.2,Pausar la partida,Estado de partida,Funcional,1,Should,Si
+CU9,Pausar y reanudar,F9.3,Confirmar la pausa al jugador,Orquestador,Funcional,1,Should,Si
+CU9,Pausar y reanudar,F9.4,Reanudar la partida,Orquestador,Funcional,1,Should,Si
+CU9,Pausar y reanudar,F9.5,Resumir cómo iba la partida,Diálogo,Funcional,1,Could,Si
+CU9,Pausar y reanudar,F9.6,Comprobar que la mesa no ha cambiado,Visión de mesa,Funcional,2,Won't,Pendiente
+CU9,Pausar y reanudar,F9.7,Cerrar la partida por ausencia prolongada,Orquestador,Funcional,1,Could,Si
+CU10,Terminar la partida,F10.1,Detectar el fin de la partida,Motor de reglas,Funcional,1,Must,Si
+CU10,Terminar la partida,F10.2,Calcular la puntuación final,Motor de reglas,Funcional,1,Must,Si
+CU10,Terminar la partida,F10.3,Anunciar el resultado con deportividad,Diálogo,Funcional,1,Must,Si
+CU10,Terminar la partida,F10.4,Comentar el desarrollo de la partida,Diálogo,Funcional,2,Won't,Pendiente
+CU10,Terminar la partida,F10.5,Explicar el recuento ficha a ficha,Diálogo,Funcional,1,Could,Si
+CU10,Terminar la partida,F10.6,Guardar el resultado en el histórico,Perfil,Funcional,2,Won't,Pendiente
+CU10,Terminar la partida,F10.7,Ofrecer la revancha,Orquestador,Funcional,1,Should,Si
+CU11,Adaptar la dificultad al jugador,F11.1,Registrar las métricas de juego,Estado de partida,Funcional,2,Won't,Pendiente
+CU11,Adaptar la dificultad al jugador,F11.2,Evaluar el desempeño del jugador,Selector de jugada,Funcional,2,Won't,Pendiente
+CU11,Adaptar la dificultad al jugador,F11.3,Ajustar el nivel de juego,Selector de jugada,Funcional,2,Won't,Pendiente
+CU11,Adaptar la dificultad al jugador,F11.4,Ajustar el ritmo de la partida,Orquestador,Funcional,2,Won't,Pendiente
+CU11,Adaptar la dificultad al jugador,F11.5,Respetar la negativa a recibir ayuda,Orquestador,Funcional,2,Won't,Pendiente
+CU11,Adaptar la dificultad al jugador,F11.6,Detectar signos de cansancio,Orquestador,Funcional,3,Won't,Pendiente
+CU11,Adaptar la dificultad al jugador,F11.7,Guardar el nivel alcanzado,Perfil,Funcional,2,Won't,Pendiente
+CU12,Jugar un juego de pantalla,F12.1,Listar los juegos de pantalla,Juegos de pantalla,Funcional,1,Should,Si
+CU12,Jugar un juego de pantalla,F12.2,Generar un reto de cálculo mental,Juegos de pantalla,Funcional,1,Should,Si
+CU12,Jugar un juego de pantalla,F12.3,Generar un reto de palabras,Juegos de pantalla,Funcional,1,Could,Si
+CU12,Jugar un juego de pantalla,F12.4,Mostrar el reto en pantalla,Cara y pantalla,Funcional,1,Should,Si
+CU12,Jugar un juego de pantalla,F12.5,Evaluar la respuesta hablada,Juegos de pantalla,Funcional,1,Should,Si
+CU12,Jugar un juego de pantalla,F12.6,Dar la respuesta y comentarla,Juegos de pantalla,Funcional,1,Should,Si
+CU12,Jugar un juego de pantalla,F12.7,Ajustar la dificultad del reto,Juegos de pantalla,Funcional,1,Could,Si
+CU12,Jugar un juego de pantalla,F12.8,Resumir la sesión de juego,Juegos de pantalla,Funcional,1,Could,Si
+CU13,Cerrar la sesión,F13.1,Detectar el fin de la sesión,Orquestador,Funcional,1,Should,Si
+CU13,Cerrar la sesión,F13.2,Despedirse,Diálogo,Funcional,1,Should,Si
+CU13,Cerrar la sesión,F13.3,Guardar una partida sin terminar,Estado de partida,Funcional,2,Won't,Pendiente
+CU13,Cerrar la sesión,F13.4,Volver al estado de espera,Orquestador,Funcional,1,Should,Si
