@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "bufit/voz/transcripcion",
+  "type": "object",
+  "required": ["ts", "texto", "idioma", "conf"],
+  "additionalProperties": false,
+  "properties": {
+    "ts": {"type": "number"},
+    "texto": {"type": "string"},
+    "idioma": {"type": "string", "pattern": "^[a-z]{2}$"},
+    "conf": {"type": "number", "minimum": 0, "maximum": 1},
+    "duracion": {"type": "number"}
+  }
+}

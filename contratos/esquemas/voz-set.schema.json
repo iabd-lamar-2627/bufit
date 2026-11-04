@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "bufit/voz/set",
+  "type": "object",
+  "required": ["ts", "texto"],
+  "properties": {
+    "ts": {"type": "number"},
+    "texto": {"type": "string"},
+    "idioma": {"type": "string", "pattern": "^[a-z]{2}$"},
+    "tono": {"type": "string"},
+    "velocidad": {"type": "number", "minimum": 0.5, "maximum": 1.5},
+    "prioridad": {"enum": ["normal", "urgente", "relleno"]}
+  }
+}

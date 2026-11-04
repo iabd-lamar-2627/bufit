@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "bufit/pantalla/set",
+  "type": "object",
+  "required": ["ts"],
+  "properties": {
+    "ts": {"type": "number"},
+    "vista": {"enum": ["espera", "menu", "juego", "reto", "mensaje"]},
+    "ojos": {"enum": ["espera", "atento", "pensando", "sorprendido", "contento", "dudoso", "dormido"]},
+    "indicador": {
+      "type": ["object", "null"],
+      "properties": {
+        "total": {"type": "integer", "minimum": 0},
+        "objetivo": {"type": ["integer", "null"]},
+        "resaltado": {"type": ["integer", "null"]}
+      }
+    },
+    "marcador": {"type": ["object", "null"]},
+    "texto": {"type": ["string", "null"]}
+  }
+}

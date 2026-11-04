@@ -1,0 +1,25 @@
+name: Incidencia
+description: Algo no funciona
+title: "[bug] "
+labels: ["incidencia"]
+body:
+  - type: textarea
+    id: que_pasa
+    attributes:
+      label: Qué pasa
+    validations: {required: true}
+  - type: textarea
+    id: reproducir
+    attributes:
+      label: Cómo reproducirlo
+      value: |
+        1. 
+        2. 
+        3. 
+    validations: {required: true}
+  - type: textarea
+    id: trazas
+    attributes:
+      label: Trazas
+      description: Pega la salida de `mosquitto_sub -t 'bufit/#' -v` o el log del contenedor.
+      render: text

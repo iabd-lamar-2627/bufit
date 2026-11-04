@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "bufit/intencion",
+  "type": "object",
+  "required": ["ts", "tipo"],
+  "additionalProperties": false,
+  "properties": {
+    "ts": {"type": "number"},
+    "tipo": {
+      "enum": ["he_terminado", "pausa", "reanudar", "para", "repite", "ayuda",
+               "reglas", "pista", "revancha", "cambiar_idioma", "elegir_juego",
+               "despedida", "charla_libre"]
+    },
+    "params": {"type": "object"},
+    "conf": {"type": "number", "minimum": 0, "maximum": 1}
+  }
+}

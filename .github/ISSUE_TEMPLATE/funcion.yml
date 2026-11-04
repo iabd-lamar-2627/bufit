@@ -1,0 +1,58 @@
+name: Función
+description: Implementar una función del catálogo
+title: "Fx.y · "
+labels: ["funcion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Un issue por función. El título empieza siempre por el código: `F4.2 · Elegir una jugada según el nivel`.
+  - type: input
+    id: codigo
+    attributes:
+      label: Código
+      placeholder: F4.2
+    validations: {required: true}
+  - type: dropdown
+    id: modulo
+    attributes:
+      label: Módulo
+      options:
+        - vision-mesa
+        - vision-atril
+        - escucha
+        - intenciones
+        - dialogo
+        - voz
+        - cara-pantalla
+        - orquestador
+        - estado-partida
+        - motor-reglas
+        - selector-jugada
+        - perfil
+        - juegos-pantalla
+        - registro
+    validations: {required: true}
+  - type: dropdown
+    id: prioridad
+    attributes:
+      label: Prioridad
+      options: [Must, Should, Could, "Won't"]
+    validations: {required: true}
+  - type: textarea
+    id: contrato
+    attributes:
+      label: Contrato
+      description: Temas MQTT o endpoints REST que entran y salen. Enlaza a `contratos/`.
+    validations: {required: true}
+  - type: textarea
+    id: aceptacion
+    attributes:
+      label: Criterios de aceptación
+      description: Sácalos de la ficha de requisitos. Cada cifra es una comprobación.
+      value: |
+        - [ ] 
+        - [ ] Cumple el tiempo máximo de la ficha
+        - [ ] Gestiona los fallos descritos en la ficha
+        - [ ] Tiene prueba automática o un procedimiento de prueba escrito
+    validations: {required: true}

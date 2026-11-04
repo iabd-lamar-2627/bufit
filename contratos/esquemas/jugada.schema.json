@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "bufit/vision/mesa/jugada",
+  "type": "object",
+  "required": ["ts", "ficha", "extremo", "accion", "conf"],
+  "additionalProperties": false,
+  "properties": {
+    "ts": {"type": "number"},
+    "ficha": {"type": "string", "pattern": "^[0-6]-[0-6]$"},
+    "extremo": {"enum": ["izq", "der"]},
+    "accion": {"enum": ["puesta", "retirada"]},
+    "conf": {"type": "number", "minimum": 0, "maximum": 1}
+  }
+}

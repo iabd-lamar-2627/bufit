@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "bufit/vision/atril/mano",
+  "type": "object",
+  "required": ["ts", "posiciones"],
+  "additionalProperties": false,
+  "properties": {
+    "ts": {"type": "number"},
+    "posiciones": {
+      "type": "object",
+      "patternProperties": {"^[0-9]+$": {"type": "string", "pattern": "^[0-6]-[0-6]$"}},
+      "additionalProperties": false
+    },
+    "conf": {
+      "type": "object",
+      "patternProperties": {"^[0-9]+$": {"type": "number", "minimum": 0, "maximum": 1}},
+      "additionalProperties": false
+    }
+  }
+}

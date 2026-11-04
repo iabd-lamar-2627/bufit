@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "bufit/estado/partida",
+  "type": "object",
+  "required": ["ts", "partida_id", "juego", "turno", "cadena", "extremos",
+               "mano_bufit", "fichas_jugador", "pozo", "marcador"],
+  "properties": {
+    "ts": {"type": "number"},
+    "partida_id": {"type": "string"},
+    "juego": {"type": "string"},
+    "turno": {"enum": ["jugador", "bufit"]},
+    "cadena": {"type": "array", "items": {"type": "string", "pattern": "^[0-6]-[0-6]$"}},
+    "extremos": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"type": "integer"}},
+    "mano_bufit": {"type": "array", "items": {"type": "string", "pattern": "^[0-6]-[0-6]$"}},
+    "fichas_jugador": {"type": "integer", "minimum": 0},
+    "pozo": {"type": "integer", "minimum": 0},
+    "marcador": {"type": "object"},
+    "jugadas": {"type": "array"},
+    "pausada": {"type": "boolean"}
+  }
+}

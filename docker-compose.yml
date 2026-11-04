@@ -1,0 +1,67 @@
+# Bufit · servicios del sistema
+#
+# Arranque mínimo: el broker y los dos módulos de ejemplo.
+#   docker compose up -d
+#
+# Según vayan estando listos los módulos, se descomentan sus bloques.
+
+services:
+
+  # ---------------------------------------------------------------- bus
+  broker:
+    image: eclipse-mosquitto:2
+    container_name: bufit-broker
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/config:/mosquitto/config:ro
+      - ./mosquitto/data:/mosquitto/data
+      - ./mosquitto/log:/mosquitto/log
+    restart: unless-stopped
+
+  # ------------------------------------------------- servicios REST
+  motor-reglas:
+    build: ./modulos/motor-reglas
+    container_name: bufit-motor-reglas
+    ports:
+      - "8001:8000"
+    restart: unless-stopped
+
+  # ------------------------------------------- suscriptores MQTT
+  registro:
+    build: ./modulos/registro
+    container_name: bufit-registro
+    environment:
+      BROKER: broker
+    volumes:
+      - ./datos/trazas:/trazas
+    depends_on:
+      - broker
+    restart: unless-stopped
+
+  # ---------------------------------------------------------- pendientes
+  #
+  # Copia este patrón cuando tu módulo esté listo.
+  #
+  # vision-mesa:
+  #   build: ./modulos/vision-mesa
+  #   container_name: bufit-vision-mesa
+  #   environment:
+  #     BROKER: broker
+  #   devices:
+  #     - "/dev/video0:/dev/video0"
+  #   depends_on:
+  #     - broker
+  #   restart: unless-stopped
+  #
+  # vision-atril:      · cámara 2
+  # escucha:           · STT
+  # intenciones:       · clasificador de órdenes
+  # dialogo:           · modelo de lenguaje
+  # voz:               · TTS
+  # cara-pantalla:     · ojos e interfaz
+  # orquestador:       · máquina de estados
+  # estado-partida:    · fuente de verdad
+  # selector-jugada:   · elige entre las legales (REST)
+  # perfil:            · motes e histórico (REST)
+  # juegos-pantalla:   · cálculo y palabras

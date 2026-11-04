@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentación del proyecto
+    url: https://iabd-lamar-2627.github.io/bufit/
+    about: Casos de uso, funciones, requisitos y arquitectura.
+  - name: Contratos
+    url: https://github.com/iabd-lamar-2627/bufit/tree/main/contratos
+    about: Qué publica y qué recibe cada módulo.
