@@ -6,7 +6,11 @@ Bufit se monta sobre la pantalla de un ordenador, mira la mesa con dos cámaras,
 
 Proyecto del Curso de Especialización en Inteligencia Artificial y Big Data · IES La Mar, Xàbia · 2026-27.
 
-📖 **Documentación del proyecto:** https://iabd-lamar-2627.github.io/bufit/
+## 📖 La documentación está en la web, no en este repositorio
+
+**[iabd-lamar-2627.github.io/bufit](https://iabd-lamar-2627.github.io/bufit/)** · qué es Bufit, los casos de uso, las 117 funciones, las fichas de requisitos, las prioridades y la arquitectura.
+
+Aquí solo está el código, los contratos y el hardware. El porqué de esa separación, y los enlaces a cada documento, en [`documentacion/`](documentacion/).
 
 ---
 
@@ -39,6 +43,7 @@ simuladores/    Mensajes falsos para probar tu módulo sin el resto del sistema.
 pruebas/        Pruebas de integración.
 hardware/       Piezas 3D y montaje.
 herramientas/   Scripts de apoyo del proyecto.
+documentacion/  Enlaces a los documentos del proyecto, que están en la web.
 ```
 
 ## Antes de escribir una línea de código
