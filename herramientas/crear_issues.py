@@ -6,12 +6,16 @@
 
 Necesita la herramienta `gh` autenticada. Es idempotente: si un issue con ese
 codigo ya existe, no lo duplica.
+
+Usa la API REST y no `gh issue create`, porque esta ultima va por GraphQL y
+no esta disponible en todos los entornos.
 """
 import argparse
 import csv
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 MATRIZ = Path(__file__).parent / "matriz.csv"
@@ -69,13 +73,12 @@ def crear_etiquetas(repo, simular):
 
 
 def existentes(repo, simular):
+    """Titulos de los issues que ya hay, por la API REST."""
     if simular:
         return set()
-    salida = gh(["issue", "list", "--repo", repo, "--state", "all",
-                 "--limit", "500", "--json", "title"], capturar=True)
-    if not salida:
-        return set()
-    return {t["title"].split(" ·")[0].strip() for t in json.loads(salida)}
+    salida = gh(["api", f"repos/{repo}/issues", "--paginate",
+                 "-X", "GET", "-f", "state=all", "-q", ".[].title"])
+    return {linea.split(" ·")[0].strip() for linea in salida.splitlines() if linea}
 
 
 def cuerpo(fila):
@@ -135,11 +138,18 @@ def main():
                      f"p:{prio}", f"fase-{f['Fase'][0]}"]
         if f["Tipo"] != "Funcional":
             etiquetas.append("nf")
-        gh(["issue", "create", "--repo", args.repo, "--title", titulo,
-            "--body", cuerpo(f), "--label", ",".join(etiquetas)], args.simular)
+        orden = ["api", f"repos/{args.repo}/issues", "-X", "POST",
+                 "-f", f"title={titulo}", "-f", f"body={cuerpo(f)}"]
+        for e in etiquetas:
+            orden += ["-f", f"labels[]={e}"]
+        gh(orden, args.simular)
         creados += 1
-        if not args.simular and creados % 10 == 0:
-            print(f"  {creados}...")
+        if not args.simular:
+            # GitHub limita la creacion de contenido: sin pausa salta el
+            # limite secundario a partir de unas decenas de issues.
+            time.sleep(0.8)
+            if creados % 10 == 0:
+                print(f"  {creados}...")
     print(f"  {creados} issues creados")
 
 
