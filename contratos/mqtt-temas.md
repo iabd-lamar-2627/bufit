@@ -170,7 +170,30 @@ Obedece: cara y pantalla · Funciones: F0.11, F3.8, F4.4, F4.6, F12.4
 ```
 
 `vista`: `espera` · `menu` · `juego` · `reto` · `mensaje`
-`ojos`: `espera` · `atento` · `pensando` · `sorprendido` · `contento` · `dudoso` · `dormido`
+`ojos`: `espera` · `atento` · `pensando` · `sorprendido` · `contento` · `dudoso` · `dormido` · `escuchando` · `concentrado` · `tu_turno` · `repiteme` · `busca_carta` · `escaneando`
+
+| Estado de `ojos` | Cuándo se usa |
+|---|---|
+| `espera` | No pasa nada; mira alrededor y parpadea |
+| `atento` | Ha visto a alguien o espera una respuesta |
+| `escuchando` | La persona está hablando |
+| `pensando` | Prepara la respuesta o la jugada |
+| `concentrado` | Mira la zona de juego con atención |
+| `escaneando` | Recorre la bandeja mientras evalúa cartas o fichas, hasta que llega otro estado |
+| `busca_carta` | Mira a la bandeja un momento y vuelve a levantar la vista |
+| `tu_turno` | Da paso al jugador |
+| `repiteme` | No ha entendido lo que le han dicho |
+| `sorprendido` | Algo inesperado (jugada buena, persona que aparece) |
+| `contento` | Habla, gana o celebra |
+| `dudoso` | No está seguro |
+| `dormido` | Nadie le habla desde hace un rato |
+
+Campos opcionales que también obedece la cara:
+
+- `mirar`: `{"x": -0.8, "y": 0}` mueve la mirada (de -1 a 1: izquierda/arriba → derecha/abajo). La publica quien sabe dónde está la persona (visión de la mesa). Tras recibirla, los ojos dejan de mirar alrededor solos durante unos segundos.
+- `parpadear`: `true` parpadea una vez.
+
+Se pueden combinar en el mismo mensaje: `{"ts": 1762262400.12, "ojos": "escuchando", "mirar": {"x": 0.4, "y": -0.1}}`.
 
 ### `bufit/voz/set`
 Obedece: voz · Funciones: F0.8, F0.10

@@ -20,3 +20,5 @@ capturas/
 *.sqlite
 mosquitto/data/
 mosquitto/log/
+vectores/
+_to_delete/

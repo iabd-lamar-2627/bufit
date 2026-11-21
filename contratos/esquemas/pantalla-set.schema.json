@@ -6,7 +6,16 @@
   "properties": {
     "ts": {"type": "number"},
     "vista": {"enum": ["espera", "menu", "juego", "reto", "mensaje"]},
-    "ojos": {"enum": ["espera", "atento", "pensando", "sorprendido", "contento", "dudoso", "dormido"]},
+    "ojos": {"enum": ["espera", "atento", "pensando", "sorprendido", "contento", "dudoso", "dormido",
+                      "escuchando", "concentrado", "tu_turno", "repiteme", "busca_carta", "escaneando"]},
+    "mirar": {
+      "type": "object",
+      "properties": {
+        "x": {"type": "number", "minimum": -1, "maximum": 1},
+        "y": {"type": "number", "minimum": -1, "maximum": 1}
+      }
+    },
+    "parpadear": {"type": "boolean"},
     "indicador": {
       "type": ["object", "null"],
       "properties": {

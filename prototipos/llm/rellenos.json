@@ -1,0 +1,37 @@
+{
+  "_comentario": "Frases fijas de Bufit, elegidas al azar sin repetir ninguna de las 3 últimas. Cortas, naturales y sin onomatopeyas (mmm, hmm), porque la voz las deletrea. 'espera': solo si la respuesta tarda más de 5 segundos; neutras, porque suenan sin saber qué ha dicho la persona. 'saludo_manana' (6-13 h), 'saludo_tarde' (13-21 h), 'saludo_noche' (21-6 h): para empezar la conversación.",
+  "espera": [
+    "Pues...",
+    "A ver...",
+    "Bueno...",
+    "Vale...",
+    "Pues mira...",
+    "Claro...",
+    "Ya...",
+    "Sí, sí..."
+  ],
+  "saludo_manana": [
+    "Buenos días, soy Bufit. ¿Qué tal ha empezado el día?",
+    "¡Buenos días! ¿Cómo has dormido?",
+    "Buenos días, qué alegría oírte. ¿Qué planes tienes para hoy?",
+    "Hola, buenos días. ¿Te apetece charlar un rato?",
+    "Buenos días. ¿Has desayunado ya?",
+    "¡Hola, buenos días! Aquí estoy para hacerte compañía. ¿Qué tal estás?"
+  ],
+  "saludo_tarde": [
+    "Buenas tardes, soy Bufit. ¿Qué tal va el día?",
+    "¡Hola, buenas tardes! ¿Has comido bien?",
+    "Buenas tardes. ¿Qué has hecho hoy?",
+    "Hola, buenas tardes. ¿Te apetece charlar un rato?",
+    "Buenas tardes, qué bien que vengas. ¿Cómo estás?",
+    "¡Buenas tardes! ¿Qué tal se presenta la tarde?"
+  ],
+  "saludo_noche": [
+    "Buenas noches, soy Bufit. ¿Qué tal ha ido el día?",
+    "Hola, buenas noches. ¿Te apetece charlar un rato antes de descansar?",
+    "Buenas noches. ¿Has cenado ya?",
+    "¡Hola! Ya es de noche. ¿Cómo ha ido el día?",
+    "Buenas noches, qué alegría oírte. ¿Qué tal estás?",
+    "Buenas noches. ¿Qué es lo mejor que te ha pasado hoy?"
+  ]
+}

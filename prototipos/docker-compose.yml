@@ -1,0 +1,88 @@
+# Prototipos de Bufit: STT + LLM (con Ollama) + conocimiento (RAG) + TTS + broker MQTT
+#   docker compose up --build -d
+#   docker compose logs -f
+#   docker compose down
+#
+# Todo en CPU, sin GPU, como en el PC final.
+
+services:
+
+  stt:
+    build: ./stt
+    container_name: bufit-proto-stt
+    ports:
+      - "8010:8000"
+    environment:
+      MODELO_WHISPER: small               # base era más rápido pero confundía "parchís" con "parches"
+      # Vocabulario que Whisper no reconoce bien por sí solo. Lista corta: si es muy larga, se inventa palabras
+      PROMPT_WHISPER: "Bufit, Xàbia, Montgó, dominó, parchís, fichas, paella, fideuà, allioli, Imserso."
+    volumes:
+      - ./stt/modelos:/modelos
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama:latest
+    environment:
+      OLLAMA_KEEP_ALIVE: "-1"            # no descargar nunca el modelo de memoria
+    container_name: bufit-proto-ollama
+    volumes:
+      - ./ollama/modelos:/root/.ollama
+    restart: unless-stopped
+
+  llm:
+    build: ./llm
+    volumes:
+      - ./llm/rellenos.json:/app/rellenos.json:ro    # frases de relleno: se editan sin reconstruir
+    container_name: bufit-proto-llm
+    ports:
+      - "8011:8000"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      MODELO: qwen3:8b
+      PENSAR: "false"                    # qwen3 piensa antes de responder: lo desactivamos
+      MODELO_REACCION: ""                # modelo pequeño para una frase mientras busca. Probado con llama3.2:3b: frases sin sentido que el 8B copiaba
+      K: "1"                             # trozos de documento por turno: cada uno cuesta segundos de lectura en CPU
+      MAX_MENSAJES: "0"                  # 0 = sin recorte
+      CONOCIMIENTO_URL: http://conocimiento:8000
+      UMBRAL: "0.58"                     # parecido mínimo (0 a 1) para usar un trozo de documento
+    depends_on:
+      - ollama
+      - conocimiento
+    restart: unless-stopped
+
+  conocimiento:
+    build: ./conocimiento
+    container_name: bufit-proto-conocimiento
+    ports:
+      - "8013:8000"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+      MODELO_EMBEDDINGS: bge-m3
+      TAM_TROZO: "400"                   # trozos pequeños: búsqueda más precisa y menos texto para el modelo
+    volumes:
+      - ./conocimiento/documentos:/app/documentos:ro   # tus .md (solo lectura)
+      - ./conocimiento/vectores:/app/vectores          # base de vectores generada
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  tts:
+    build: ./tts
+    container_name: bufit-proto-tts
+    ports:
+      - "8012:8000"
+    environment:
+      VOZ: es_ES-davefx-medium
+    volumes:
+      - ./tts/modelos:/modelos
+    restart: unless-stopped
+
+  mqtt:
+    image: eclipse-mosquitto:2
+    container_name: bufit-proto-mqtt
+    ports:
+      - "1883:1883"                      # MQTT normal: programas en Python y servicios
+      - "9001:9001"                      # MQTT por WebSocket: la página de los ojos
+    volumes:
+      - ./mqtt/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
