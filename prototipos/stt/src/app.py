@@ -32,12 +32,18 @@ def es_alucinacion(texto: str) -> bool:
 app = FastAPI(title="Bufit STT")
 
 # Se carga una sola vez al arrancar. En CPU, int8 es lo más rápido.
-modelo = WhisperModel(MODELO, device="cpu", compute_type="int8")
+# HILOS: núcleos que usa Whisper (0 = todos los del contenedor). STT y LLM no trabajan a la vez,
+# así que mientras transcribe puede usar todos.
+HILOS = int(os.getenv("HILOS", "0")) or os.cpu_count() or 4
+# HAZ (beam size): cuántas transcripciones posibles compara. 1 = la más rápida (unas dos veces
+# más que 5, el valor por defecto de Whisper), a cambio de fallar algo más en palabras raras.
+HAZ = int(os.getenv("HAZ", "1"))
+modelo = WhisperModel(MODELO, device="cpu", compute_type="int8", cpu_threads=HILOS)
 
 
 @app.get("/salud")
 def salud():
-    return {"ok": True, "modelo": MODELO}
+    return {"ok": True, "modelo": MODELO, "hilos": HILOS, "haz": HAZ}
 
 
 @app.post("/transcribir")
@@ -53,6 +59,8 @@ async def transcribir(audio: UploadFile = File(...)):
             tmp.name,
             language=IDIOMA,
             initial_prompt=PROMPT,
+            beam_size=HAZ,
+            without_timestamps=True,            # no necesitamos marcas de tiempo: ahorra trabajo
             vad_filter=True,                    # descarta los trozos sin voz antes de transcribir
             condition_on_previous_text=False,   # evita que una alucinación arrastre a la siguiente
         )

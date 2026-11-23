@@ -16,6 +16,7 @@
       }
     },
     "parpadear": {"type": "boolean"},
+    "voz": {"type": "number", "minimum": 0, "maximum": 1},
     "indicador": {
       "type": ["object", "null"],
       "properties": {

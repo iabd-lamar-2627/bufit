@@ -192,6 +192,7 @@ Campos opcionales que también obedece la cara:
 
 - `mirar`: `{"x": -0.8, "y": 0}` mueve la mirada (de -1 a 1: izquierda/arriba → derecha/abajo). La publica quien sabe dónde está la persona (visión de la mesa). Tras recibirla, los ojos dejan de mirar alrededor solos durante unos segundos.
 - `parpadear`: `true` parpadea una vez.
+- `voz`: nivel de la voz de quien habla, de 0 a 1, unas 8 veces por segundo. Solo tiene efecto en `escuchando`: las pupilas se abren y las cejas suben al ritmo de la voz, y en las pausas Bufit asiente un poco. Lo publica quien tiene el micrófono.
 
 Se pueden combinar en el mismo mensaje: `{"ts": 1762262400.12, "ojos": "escuchando", "mirar": {"x": 0.4, "y": -0.1}}`.
 

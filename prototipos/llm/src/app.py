@@ -7,9 +7,12 @@
 - GET    /historial/{partida}   descarga el historial completo
 - DELETE /historial/{partida}   borra el historial (al cerrar la partida)
 
-En cada turno pregunta al servicio de conocimiento (RAG). Si encuentra trozos de
-documentos parecidos a la pregunta, los añade al prompt para que el modelo responda
-con esa información en lugar de inventársela.
+Base de conocimientos (RAG), dos modos (MODO_BUSQUEDA):
+- "modelo" (por defecto): el modelo decide cuándo buscar. Tiene una herramienta
+  buscar_conocimiento y la llama solo si la necesita (reglas, recetas, trámites...).
+  En la charla normal no se busca nada y la respuesta sale de una sola pasada.
+- "umbral": se busca en cada turno, pero un trozo solo entra si se parece mucho
+  (UMBRAL_ALTO) o, si la frase menciona un tema de la base, si supera UMBRAL.
 
 El historial vive en memoria: si el contenedor se reinicia, se pierde.
 Descargarlo antes de cerrar la partida es cosa del orquestador.
@@ -19,6 +22,7 @@ import os
 import random
 import re
 import time
+import unicodedata
 from collections import deque
 
 import httpx
@@ -36,43 +40,92 @@ OPCIONES = {"think": PENSAR == "true"} if PENSAR in ("true", "false") else {}
 
 # Servicio de conocimiento (RAG). Vacío = no se usa.
 CONOCIMIENTO_URL = os.getenv("CONOCIMIENTO_URL", "")
+MODO_BUSQUEDA = os.getenv("MODO_BUSQUEDA", "modelo")   # "modelo" o "umbral"
 UMBRAL = float(os.getenv("UMBRAL", "0.5"))     # parecido mínimo (0 a 1) para usar un trozo
+UMBRAL_ALTO = float(os.getenv("UMBRAL_ALTO", "0.68"))  # modo umbral: sin palabra clave hace falta más parecido
 K = int(os.getenv("K", "1"))                   # cuántos trozos pedir como máximo
+K_HERRAMIENTA = int(os.getenv("K_HERRAMIENTA", "2"))  # modo modelo: trozos por búsqueda
+# Tope de tokens por respuesta, por si el modelo se alarga (0 = sin tope). Si lo alcanza,
+# se descarta la última frase a medias para que Bufit no se corte en mitad de una palabra.
+MAX_TOKENS = int(os.getenv("MAX_TOKENS", "110"))
 
 # Frases de relleno (se releen en cada uso: se pueden editar sin reiniciar)
 FICHERO_RELLENOS = os.getenv("FICHERO_RELLENOS", "/app/rellenos.json")
 
-SISTEMA = os.getenv(
-    "SISTEMA",
-    """Te llamas Bufit. Si te preguntan tu nombre, di que te llamas Bufit.
+PROMPT_BASE = """Te llamas Bufit. Si te preguntan tu nombre, di que te llamas Bufit.
 
-Eres un compañero de conversación para personas mayores. Te gusta charlar de cualquier tema cotidiano: la familia, el tiempo, la comida, los recuerdos, las aficiones o lo que pasa en el pueblo.
+Eres un compañero de charla para personas mayores. Hablas de cualquier tema como lo haría un vecino culto y simpático: la familia, los recuerdos, el pueblo, la comida, la música, el cine, los deportes, la historia o lo que la persona quiera.
 
-También sabes jugar al dominó, pero solo hablas del dominó si la persona saca el tema o pide jugar. No lo propongas en cada respuesta.
+Tu especialidad son los juegos de mesa y de cartas: te encanta hablar de ellos, explicar sus reglas y jugar. Pero no los propones en cada respuesta: solo si la persona saca el tema o la conversación se queda parada.
+
+Lo que sabes y lo que no:
+- De temas generales puedes hablar con lo que sabes. Si no estás seguro de un dato concreto, como una fecha, una cifra o un nombre, dilo con naturalidad en vez de inventarlo.
+- No sabes qué tiempo hace, qué día es ni las noticias de hoy. Si hace falta, pregúntalo.
+- De la vida de la persona solo sabes lo que te cuente en esta conversación. No inventes nada sobre ella ni sobre su familia.
+- No tienes una vida propia: no cuentes cosas que hayas hecho, comido o visto.
+- Solo puedes hablar: no puedes enseñar fotos, poner música, llamar a nadie, dar comida o bebida ni hacer nada fuera de esta conversación. No lo ofrezcas.
+- Si te piden consejo sobre algo general (ejercicio, planes, la casa, el día a día), responde directamente con consejos sencillos y sensatos. No digas lo que no eres ("no soy entrenador", "no soy camarero"), salvo que sea un tema delicado de salud: entonces da una idea general y recomienda consultarlo con el médico.
+- Para trámites, ayudas, salud o dinero, si no tienes la información, no la supongas: recomienda preguntar en el ayuntamiento, en el centro de salud o en la web oficial.
 
 Cómo hablas:
-- Responde siempre en español de España, nunca en otro idioma.
-- Habla como un vecino amable: frases cortas, claras y cálidas.
-- Tienes un poco de sentido del humor: muy de vez en cuando haces una broma suave o un comentario simpático. La mayoría de tus respuestas no llevan ninguna broma. No escribas risas como jaja o haha. Nunca te burlas de la persona, y si está triste o habla de algo serio como la salud o una pérdida, no bromeas.
-- Contesta en una o dos frases y, si encaja, haz una pregunta para seguir la conversación.
-- No inventes datos sobre la persona ni sobre su familia: usa solo lo que te haya contado.
-- No sabes qué tiempo hace, qué día es ni qué pasa fuera de esta conversación. No lo inventes: si hace falta, pregúntalo.
-- No sabes nada de la vida de la persona salvo lo que te cuente en esta conversación: ni sus planes, ni sus visitas, ni su familia. Si te pregunta algo así, di que no lo sabes y pregúntale.
-- No tienes una vida propia fuera de esta conversación: no cuentes cosas que hayas hecho, comido o visto.
-- Si no sabes algo, dilo con sencillez. No te lo inventes.
-- Si te preguntan por un trámite, una ayuda, la salud o el dinero y no tienes información sobre ello, dilo y recomienda preguntar en el ayuntamiento, en el centro de salud o en la web oficial.
-- Tus respuestas se leen en voz alta: no uses listas, emojis, asteriscos ni símbolos, ni onomatopeyas como mmm o hmm.
-- Solo puedes hablar: no puedes enseñar fotos, poner música, llamar a nadie ni hacer nada fuera de esta conversación. No lo ofrezcas.
+- Siempre en español de España y en primera persona. Nunca hables de ti como "Bufit" en tercera persona.
+- Tus respuestas se leen en voz alta: frases cortas, claras y cálidas, sin listas, emojis, asteriscos ni símbolos, ni onomatopeyas como mmm o hmm.
+- Responde con una o dos frases como mucho. Es una charla, no una explicación: mejor corto y que la persona siga hablando.
+- Si encaja, termina con una sola pregunta corta. No siempre hace falta preguntar.
+- No uses frases de relleno ni fórmulas repetidas, como "me encantaría oír tu experiencia" o empezar siempre con "¡qué bien que...!". Varía cómo empiezas.
+- Un poco de humor muy de vez en cuando: la mayoría de respuestas no llevan broma. No escribas risas como jaja. Nunca bromeas si la persona está triste o habla de algo serio como la salud o una pérdida.
+- Si no entiendes lo que te dicen o la frase no tiene sentido, pregunta qué ha querido decir."""
 
-A veces el mensaje de la persona llega con información de tu base de conocimientos entre corchetes. Cuando pase:
-- Si la pregunta trata de eso, responde con esa información y no añadas datos que no estén ahí.
-- Copia exactamente las fechas, plazos, cantidades y teléfonos.
-- Si lo que te preguntan no está en esa información, di que no lo sabes.
-- Si es un trámite, di de dónde sale la información, por ejemplo: "según la información que tengo del Imserso".
-- Si es una receta o unas reglas, explícalas poco a poco, un paso cada vez, y pregunta si quiere que sigas.
-- Empieza con una frase muy corta y natural que reaccione a lo que te han dicho, y después da la información. Varía esa frase: no repitas la misma reacción de un turno a otro.
-- Si no entiendes bien lo que te dicen, o la frase no tiene sentido, pregunta qué ha querido decir en lugar de suponerlo.""",
-)
+PROMPT_HERRAMIENTA = """
+
+Tu base de conocimientos:
+- Tienes la herramienta buscar_conocimiento con información fiable sobre reglas de juegos de mesa y de cartas, recetas (sobre todo valencianas), trámites y ayudas para mayores, fiestas, Xàbia, refranes, uso del móvil, consejos de salud y estafas.
+- Úsala siempre que te pregunten por las reglas de un juego, una receta, un trámite o una ayuda, o cuando necesites un dato concreto de esos temas. También si la persona quiere seguir con una receta o unas reglas y necesitas el siguiente paso.
+- No la uses para saludar, charlar, hablar de sentimientos o de temas generales.
+- La búsqueda es interna: úsala directamente cuando la necesites. Nunca digas que vas a buscar, ni preguntes si quieres que busques, ni ofrezcas buscar en internet: no tienes internet.
+- Cuando uses lo que encuentres, copia exactamente las fechas, plazos, cantidades y teléfonos, y no añadas datos que no estén ahí. En un trámite, di de dónde sale la información, por ejemplo: "según la información que tengo del Imserso".
+- Si la búsqueda no trae lo que te han preguntado, dilo con sencillez.
+- Las recetas y las reglas se explican poco a poco, un paso cada vez, preguntando si quiere que sigas."""
+
+PROMPT_CORCHETES = """
+
+Tu base de conocimientos:
+- A veces el mensaje de la persona llega con información de tu base de conocimientos entre corchetes.
+- Úsala solo si responde a lo que te han preguntado. Si no tiene que ver, ignórala y sigue la conversación normal sin mencionarla.
+- Cuando la uses, copia exactamente las fechas, plazos, cantidades y teléfonos, y no añadas datos que no estén ahí. En un trámite, di de dónde sale la información.
+- Las recetas y las reglas se explican poco a poco, un paso cada vez, preguntando si quiere que sigas."""
+
+if not CONOCIMIENTO_URL:
+    _extra = ""
+elif MODO_BUSQUEDA == "modelo":
+    _extra = PROMPT_HERRAMIENTA
+else:
+    _extra = PROMPT_CORCHETES
+SISTEMA = os.getenv("SISTEMA") or PROMPT_BASE + _extra
+
+# Herramienta que el modelo puede pedir (modo "modelo")
+HERRAMIENTA_BUSCAR = {
+    "type": "function",
+    "function": {
+        "name": "buscar_conocimiento",
+        "description": (
+            "Busca en la base de conocimientos de Bufit: reglas de juegos de mesa y de cartas, "
+            "recetas, trámites y ayudas para mayores, fiestas, Xàbia, refranes, uso del móvil, "
+            "consejos de salud y estafas. Úsala solo cuando necesites datos concretos de estos temas."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "consulta": {
+                    "type": "string",
+                    "description": "Qué buscar, en pocas palabras. Por ejemplo: 'reglas de la brisca', 'receta de la fideuà', 'viajes del Imserso'.",
+                }
+            },
+            "required": ["consulta"],
+        },
+    },
+}
+HERRAMIENTAS = [HERRAMIENTA_BUSCAR] if CONOCIMIENTO_URL and MODO_BUSQUEDA == "modelo" else None
 
 app = FastAPI(title="Bufit LLM")
 cliente = Client(host=OLLAMA_HOST)
@@ -152,10 +205,10 @@ def generar_reaccion(recientes: list[dict]) -> str | None:
 
 # ------------------------------------------------------------ RAG
 
-def buscar(consulta: str) -> list[dict]:
+def buscar(consulta: str, k: int = K) -> list[dict]:
     """Pregunta al servicio de conocimiento y devuelve los trozos que superan el UMBRAL."""
     try:
-        r = httpx.post(f"{CONOCIMIENTO_URL}/buscar", json={"texto": consulta, "k": K}, timeout=10)
+        r = httpx.post(f"{CONOCIMIENTO_URL}/buscar", json={"texto": consulta, "k": k}, timeout=10)
         r.raise_for_status()
     except httpx.HTTPError as e:
         print(f"No se puede consultar el conocimiento: {e}", flush=True)
@@ -176,10 +229,40 @@ def buscar_conocimiento(historial: list[dict]) -> list[dict]:
     del_jugador = [m["content"] for m in historial if m["role"] == "user"]
     de_bufit = [m["content"] for m in historial if m["role"] == "assistant"]
 
-    trozos = buscar(del_jugador[-1])
+    trozos = filtrar_umbral_doble(del_jugador[-1], buscar(del_jugador[-1]))
     if trozos or len(del_jugador[-1].split()) > 8:
         return trozos
-    return buscar(" ".join(de_bufit[-1:] + del_jugador[-2:]))
+    contexto = " ".join(de_bufit[-1:] + del_jugador[-2:])
+    return filtrar_umbral_doble(contexto, buscar(contexto))
+
+
+# Temas de la base de conocimientos (sin tildes, en minúsculas; vale con el principio de la palabra)
+PALABRAS_CLAVE = re.compile(r"\b(" + "|".join([
+    "jueg", "jug", "regla", "carta", "baraja", "partida", "ficha", "domino", "parchis", "brisca",
+    "tute", "mus", "chinchon", "escoba", "cinquillo", "rumi", "oca", "ajedrez", "damas", "bingo",
+    "poker", "siete y medio", "blackjack", "tres en raya",
+    "receta", "cocin", "guis", "ingrediente", "paella", "arroz", "fideua", "postre", "plato",
+    "tramite", "ayuda", "pension", "imserso", "dependencia", "teleasistencia", "tarjeta",
+    "certificado", "clave", "copago", "renfe", "termalismo", "voluntades",
+    "fiesta", "falla", "hoguera", "moros", "tomatina", "magdalena", "san juan", "semana santa",
+    "xabia", "javea", "montgo", "riurau", "molino", "refran", "dicho",
+    "movil", "whatsapp", "videollamada", "contacto", "emergencia",
+    "salud", "caida", "dieta", "estafa", "timo",
+]) + r")")
+
+
+def sin_tildes(texto: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", texto.lower()) if unicodedata.category(c) != "Mn")
+
+
+def filtrar_umbral_doble(texto: str, trozos: list[dict]) -> list[dict]:
+    """Si la frase menciona un tema de la base, vale con UMBRAL; si no, hace falta UMBRAL_ALTO.
+
+    Así "tengo un poco de sueño" no arrastra el documento "dormir bien" por un parecido flojo.
+    """
+    if PALABRAS_CLAVE.search(sin_tildes(texto)):
+        return trozos
+    return [t for t in trozos if t["puntuacion"] >= UMBRAL_ALTO]
 
 
 def con_contexto(texto: str, trozos: list[dict], reaccion: str | None = None) -> str:
@@ -203,6 +286,12 @@ def preparar(partida: str, texto: str):
     historial = historiales.setdefault(partida, [])
     historial.append({"role": "user", "content": texto})
 
+    if MODO_BUSQUEDA == "modelo":
+        # Busca el propio modelo con la herramienta, si lo necesita (ver responder())
+        recientes = historial[-MAX_MENSAJES:] if MAX_MENSAJES else historial
+        mensajes = [{"role": "system", "content": SISTEMA}] + recientes
+        return historial, recientes, mensajes, [], []
+
     trozos = buscar_conocimiento(historial)
     if trozos:
         tema_activo[partida] = trozos
@@ -225,6 +314,86 @@ def preparar(partida: str, texto: str):
     return historial, recientes, mensajes, fuentes, trozos
 
 
+# ------------------------------------------------------------ respuesta (con herramienta)
+
+def ejecutar_busqueda(consulta: str) -> tuple[str, list[dict]]:
+    """Lo que hace la herramienta buscar_conocimiento: texto para el modelo y fuentes usadas."""
+    trozos = buscar(consulta, K_HERRAMIENTA) if consulta.strip() else []
+    print(f"[herramienta] buscar_conocimiento({consulta!r}) → {[t['titulo'] for t in trozos]}", flush=True)
+    if not trozos:
+        return "No hay información sobre eso en la base de conocimientos.", []
+    texto = "\n\n".join(f"{t['titulo']}:\n{t['texto'].split(chr(10), 2)[-1].strip()}" for t in trozos)
+    return texto, [{"titulo": t["titulo"], "puntuacion": t["puntuacion"], "consulta": consulta} for t in trozos]
+
+
+def responder(partida: str, historial: list[dict], mensajes: list[dict], fuentes: list[dict], medidas: dict):
+    """Genera la respuesta en streaming. Devuelve trozos {"texto": ...} y, al buscar, {"relleno": ...}.
+
+    Si el modelo pide la herramienta, se busca, se le pasa el resultado y se genera otra vez.
+    Las herramientas se mandan en TODAS las pasadas: el prompt de sistema las incluye, y si una
+    pasada fuera sin ellas el principio del prompt cambiaría y Ollama tendría que releerlo
+    entero (de 2 s a 20-30 s en CPU), en esa pasada y en el turno siguiente.
+    La llamada y su resultado se guardan en el historial: así, en el turno siguiente
+    ("sí, sigue") el modelo aún tiene el documento delante.
+    Al final añade la respuesta de Bufit al historial, aunque el cliente corte a mitad.
+    """
+    completo = ""
+    try:
+        for paso in range(3):                    # como mucho dos búsquedas por turno
+            llamadas, texto_paso = [], ""
+            limite = {"options": {"num_predict": MAX_TOKENS}} if MAX_TOKENS else {}
+            for trozo in cliente.chat(model=MODELO, messages=mensajes, stream=True,
+                                      tools=HERRAMIENTAS, **limite, **OPCIONES):
+                if trozo.message.tool_calls:
+                    llamadas.extend(trozo.message.tool_calls)
+                contenido = trozo.message.content or ""
+                texto_paso += contenido
+                if contenido:
+                    yield {"texto": contenido}
+                if trozo.done and trozo.done_reason == "length":
+                    medidas["cortada"] = True
+                if trozo.done and trozo.eval_duration:
+                    medidas.setdefault("pasadas", []).append({
+                        "carga_s": round((trozo.load_duration or 0) / 1e9, 1),
+                        "lectura_tokens": trozo.prompt_eval_count or 0,
+                        "lectura_s": round((trozo.prompt_eval_duration or 0) / 1e9, 1),
+                        "escritura_tokens": trozo.eval_count,
+                        "escritura_s": round(trozo.eval_duration / 1e9, 1),
+                    })
+            completo += texto_paso
+            if not llamadas or paso == 2:
+                break
+            # El modelo ha pedido buscar: una frase para no quedarse callado, y a buscar
+            if paso == 0 and not texto_paso.strip():
+                frase = elegir_relleno(partida, "busqueda")
+                if frase:
+                    yield {"relleno": frase}
+            pedido = {"role": "assistant", "content": texto_paso,
+                      "tool_calls": [{"function": {"name": c.function.name,
+                                                   "arguments": dict(c.function.arguments)}}
+                                     for c in llamadas]}
+            mensajes.append(pedido)
+            historial.append(pedido)
+            for c in llamadas:
+                consulta = str(dict(c.function.arguments).get("consulta", ""))
+                texto, usadas = ejecutar_busqueda(consulta)
+                fuentes.extend(usadas)
+                resultado = {"role": "tool", "content": texto}
+                mensajes.append(resultado)
+                historial.append(resultado)
+            completo = ""            # lo que cuenta como respuesta es lo que venga después
+        if not completo.strip():
+            completo = "Perdona, ahora mismo no me sale. ¿Me lo preguntas de otra forma?"
+            yield {"texto": completo}
+    finally:
+        if medidas.get("cortada"):
+            # Se ha quedado a medias: guardar solo hasta la última frase completa
+            fin = max(completo.rfind(c) for c in ".!?…")
+            completo = completo[:fin + 1] if fin >= 0 else completo
+        historial.append({"role": "assistant", "content": completo.strip()})
+    print(f"[respuesta] {medidas}", flush=True)
+
+
 # ------------------------------------------------------------ arranque
 
 def calentar():
@@ -233,6 +402,7 @@ def calentar():
     cliente.chat(
         model=MODELO,
         messages=[{"role": "system", "content": SISTEMA}, {"role": "user", "content": "Hola"}],
+        tools=HERRAMIENTAS,
         **OPCIONES,
     )
     print(f"Modelo {MODELO} cargado en memoria ({time.time() - inicio:.1f} s)", flush=True)
@@ -287,7 +457,9 @@ def salud():
         "modelo": MODELO,
         "max_mensajes": MAX_MENSAJES,
         "conocimiento": CONOCIMIENTO_URL or None,
+        "modo_busqueda": MODO_BUSQUEDA,
         "umbral": UMBRAL,
+        "umbral_alto": UMBRAL_ALTO,
         "partidas_abiertas": list(historiales),
     }
 
@@ -295,18 +467,16 @@ def salud():
 @app.post("/conversar")
 def conversar(peticion: Peticion):
     historial, recientes, mensajes, fuentes, trozos = preparar(peticion.partida, peticion.texto)
-
-    respuesta = cliente.chat(model=MODELO, messages=mensajes, **OPCIONES)
-    texto = respuesta["message"]["content"]
-    historial.append({"role": "assistant", "content": texto})
-
-    segundos = respuesta["eval_duration"] / 1_000_000_000
+    medidas: dict = {}
+    texto = "".join(d.get("texto", "") for d in responder(peticion.partida, historial, mensajes, fuentes, medidas)).strip()
+    ultima = (medidas.get("pasadas") or [{}])[-1]
     return {
         "respuesta": texto,
         "fuentes": fuentes,
         "mensajes_guardados": len(historial),
         "mensajes_enviados": len(recientes),
-        "tokens_seg": round(respuesta["eval_count"] / segundos, 1) if segundos else None,
+        "tokens_seg": round(ultima["escritura_tokens"] / ultima["escritura_s"], 1) if ultima.get("escritura_s") else None,
+        "medidas": medidas,
     }
 
 
@@ -337,33 +507,24 @@ def conversar_stream(peticion: Peticion):
                                 "content": con_contexto(peticion.texto, trozos, reaccion)}
                 yield linea({"relleno": reaccion})
 
-        completo, pendiente, tokens_seg, medidas = "", "", None, {}
-        try:
-            for trozo in cliente.chat(model=MODELO, messages=mensajes, stream=True, **OPCIONES):
-                contenido = trozo.message.content or ""
-                completo += contenido
-                pendiente += contenido
-                # Enviar cada frase en cuanto está completa
-                while (m := FIN_FRASE.match(pendiente)):
-                    yield linea({"frase": m.group(1).strip()})
-                    pendiente = pendiente[m.end():]
-                if trozo.done and trozo.eval_duration:
-                    tokens_seg = round(trozo.eval_count / (trozo.eval_duration / 1_000_000_000), 1)
-                    # Dónde se va el tiempo: cargar el modelo, leer el prompt o escribir la respuesta
-                    medidas = {
-                        "carga_s": round((trozo.load_duration or 0) / 1e9, 1),
-                        "lectura_tokens": trozo.prompt_eval_count or 0,
-                        "lectura_s": round((trozo.prompt_eval_duration or 0) / 1e9, 1),
-                        "escritura_tokens": trozo.eval_count,
-                        "escritura_s": round(trozo.eval_duration / 1e9, 1),
-                    }
-                    print(f"[respuesta] {medidas}", flush=True)
-            if pendiente.strip():
-                yield linea({"frase": pendiente.strip()})
-        finally:
-            # La respuesta completa se guarda aunque el cliente corte a mitad
-            historial.append({"role": "assistant", "content": completo.strip()})
-        yield linea({"fin": True, "tokens_seg": tokens_seg, "fuentes": fuentes, "medidas": medidas})
+        pendiente, medidas = "", {}
+        for dato in responder(peticion.partida, historial, mensajes, fuentes, medidas):
+            if "relleno" in dato:
+                yield linea({"relleno": dato["relleno"]})
+                continue
+            pendiente += dato["texto"]
+            # Enviar cada frase en cuanto está completa
+            while (m := FIN_FRASE.match(pendiente)):
+                yield linea({"frase": m.group(1).strip()})
+                pendiente = pendiente[m.end():]
+        if pendiente.strip() and not medidas.get("cortada"):    # una frase a medias no se dice
+            yield linea({"frase": pendiente.strip()})
+        pasadas = medidas.get("pasadas") or []
+        ultima = pasadas[-1] if pasadas else {}
+        tokens_seg = round(ultima["escritura_tokens"] / ultima["escritura_s"], 1) if ultima.get("escritura_s") else None
+        # Para el cliente: las medidas de la última pasada, más cuántas pasadas ha habido
+        resumen = dict(ultima, pasadas=len(pasadas)) if ultima else {}
+        yield linea({"fin": True, "tokens_seg": tokens_seg, "fuentes": fuentes, "medidas": resumen})
 
     return StreamingResponse(generar(), media_type="application/x-ndjson")
 

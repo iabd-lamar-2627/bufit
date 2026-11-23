@@ -14,6 +14,8 @@ services:
       - "8010:8000"
     environment:
       MODELO_WHISPER: small               # base era más rápido pero confundía "parchís" con "parches"
+      HAZ: "2"                            # beam size: 1 es lo más rápido, 5 (el de Whisper) acierta más; 2 es el término medio
+      HILOS: "0"                          # núcleos para Whisper; 0 = todos los del contenedor
       # Vocabulario que Whisper no reconoce bien por sí solo. Lista corta: si es muy larga, se inventa palabras
       PROMPT_WHISPER: "Bufit, Xàbia, Montgó, dominó, parchís, fichas, paella, fideuà, allioli, Imserso."
     volumes:
@@ -24,6 +26,7 @@ services:
     image: ollama/ollama:latest
     environment:
       OLLAMA_KEEP_ALIVE: "-1"            # no descargar nunca el modelo de memoria
+      OLLAMA_NOPRUNE: "1"                # al arrancar, no borrar ficheros de modelos que crea huérfanos
     container_name: bufit-proto-ollama
     volumes:
       - ./ollama/modelos:/root/.ollama
@@ -44,7 +47,11 @@ services:
       K: "1"                             # trozos de documento por turno: cada uno cuesta segundos de lectura en CPU
       MAX_MENSAJES: "0"                  # 0 = sin recorte
       CONOCIMIENTO_URL: http://conocimiento:8000
+      MODO_BUSQUEDA: modelo              # modelo: Bufit decide cuándo buscar (herramienta) · umbral: busca siempre con umbral doble
+      K_HERRAMIENTA: "2"                 # modo modelo: trozos de documento por búsqueda
+      MAX_TOKENS: "110"                  # tope por respuesta (unas 3 frases); 0 = sin tope
       UMBRAL: "0.58"                     # parecido mínimo (0 a 1) para usar un trozo de documento
+      UMBRAL_ALTO: "0.68"                # modo umbral: parecido necesario si la frase no nombra un tema de la base
     depends_on:
       - ollama
       - conocimiento

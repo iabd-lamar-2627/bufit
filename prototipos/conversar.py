@@ -42,6 +42,8 @@ MAX_GRABACION = 15       # segundos como máximo por frase
 UMBRAL_MIN = 150         # umbral mínimo de inicio, aunque el ruido sea muy bajo
 PALABRAS_SALIR = ("adiós", "adios", "hasta luego", "salir")
 ESPERA_RELLENO = 5.0     # segundos sin respuesta antes de decir una frase de relleno
+ESPERA_SIGUIENTE = 7.0   # si sigue sin llegar nada, otra frase de espera cada tantos segundos
+MAX_RELLENOS = 3         # como mucho, frases de espera por turno
 BROKER = "localhost"     # broker MQTT (servicio mqtt del compose)
 TEMA_PANTALLA = "bufit/pantalla/set"
 DORMIR_TRAS = 60         # segundos sin que nadie hable para que Bufit se duerma
@@ -51,6 +53,8 @@ DORMIR_TRAS = 60         # segundos sin que nadie hable para que Bufit se duerma
 try:
     import paho.mqtt.client as paho
     cliente_mqtt = paho.Client(paho.CallbackAPIVersion.VERSION2)
+    # Última voluntad: si este programa se cierra o se cuelga, el broker pone los ojos a dormir
+    cliente_mqtt.will_set(TEMA_PANTALLA, json.dumps({"ojos": "dormido"}), retain=True)
     cliente_mqtt.connect_async(BROKER, 1883)
     cliente_mqtt.loop_start()             # se conecta (y reconecta) en segundo plano
 except ImportError:
@@ -58,6 +62,17 @@ except ImportError:
     print("[sin ojos: falta paho-mqtt → pip install -r requirements-cliente.txt]")
 
 estado_ojos = None
+ultima_voz = 0.0
+
+
+def voz_ojos(volumen, inicio, fin):
+    """Manda a los ojos el nivel de tu voz (0 a 1), como mucho unas 8 veces por segundo."""
+    global ultima_voz
+    if cliente_mqtt is None or time.time() - ultima_voz < 0.12:
+        return
+    ultima_voz = time.time()
+    nivel = min(1.0, max(0.0, (volumen - fin) / (inicio * 4)))
+    cliente_mqtt.publish(TEMA_PANTALLA, json.dumps({"voz": round(nivel, 2)}))
 
 
 def ojos(estado):
@@ -66,7 +81,8 @@ def ojos(estado):
     if estado == estado_ojos or cliente_mqtt is None:
         return
     estado_ojos = estado
-    cliente_mqtt.publish(TEMA_PANTALLA, json.dumps({"ojos": estado}))
+    # retain: el broker guarda el último estado y se lo da a la página aunque se abra más tarde
+    cliente_mqtt.publish(TEMA_PANTALLA, json.dumps({"ojos": estado}), retain=True)
 
 # ------------------------------------------------------------ Ctrl+C
 
@@ -176,6 +192,7 @@ def grabar(ruido):
         print(f"\r  nivel {volumen:6.0f}  ·  ruido {ruido:5.0f}  ·  inicio {inicio:5.0f}  ·  fin {fin:5.0f}  ",
               end="", flush=True)
         bloques.append(bloque)
+        voz_ojos(volumen, inicio, fin)
         silencio = silencio + BLOQUE if volumen < fin else 0.0
         duracion = len(bloques) * BLOQUE
 
@@ -253,41 +270,56 @@ def esperar_a_que_termine_de_hablar():
 class Turno:
     """Lo que dice Bufit en un turno, en el orden correcto.
 
-    Si en ESPERA_RELLENO segundos no ha llegado nada del servicio, dice una frase de
-    relleno de espera ("Mmm, déjame pensar"). El cerrojo garantiza que ese relleno
-    nunca suene después de la respuesta de verdad, y que no se digan dos rellenos seguidos.
+    Si en ESPERA_RELLENO segundos no ha llegado nada del servicio, dice una frase de espera
+    ("A ver..."). Si sigue sin llegar nada, cada ESPERA_SIGUIENTE segundos dice otra más larga
+    ("Ya casi lo tengo..."), hasta MAX_RELLENOS en total contando la que manda el servicio al
+    buscar. El cerrojo garantiza que un relleno nunca suene después de la respuesta de verdad.
     """
 
     def __init__(self, partida):
         self.partida = partida
         self.cerrojo = threading.Lock()
-        self.ha_hablado = False
-        self.temporizador = threading.Timer(ESPERA_RELLENO, self._relleno_de_espera)
+        self.respondido = False          # ya ha llegado una frase de verdad
+        self.rellenos = 0
+        self.temporizador = None
+        self._programar(ESPERA_RELLENO)
+
+    def _programar(self, segundos):
+        if self.temporizador:
+            self.temporizador.cancel()
+        self.temporizador = threading.Timer(segundos, self._relleno_de_espera)
         self.temporizador.daemon = True
         self.temporizador.start()
 
     def _relleno_de_espera(self):
         with self.cerrojo:
-            if self.ha_hablado or salir:
+            if self.respondido or salir or self.rellenos >= MAX_RELLENOS:
                 return
+            tipo = "espera" if self.rellenos == 0 else "espera_larga"
             try:
                 r = requests.get(f"{LLM}/relleno",
-                                 params={"partida": self.partida, "tipo": "espera"}, timeout=5)
+                                 params={"partida": self.partida, "tipo": tipo}, timeout=5)
                 frase = r.json().get("relleno")
                 if frase:
                     cola_voz.put(sintetizar(frase))
-                    self.ha_hablado = True
+                    self.rellenos += 1
                     print(f"({frase}) ", end="", flush=True)
             except requests.RequestException:
                 pass
+            self._programar(ESPERA_SIGUIENTE)
 
     def decir(self, frase, relleno=False):
         with self.cerrojo:
-            self.temporizador.cancel()
-            if relleno and self.ha_hablado:      # nunca dos rellenos seguidos
-                return
-            cola_voz.put(sintetizar(frase))
-            self.ha_hablado = True
+            if relleno:
+                if self.respondido or self.rellenos >= MAX_RELLENOS:
+                    return
+                cola_voz.put(sintetizar(frase))
+                self.rellenos += 1
+                self._programar(ESPERA_SIGUIENTE)
+            else:
+                self.temporizador.cancel()
+                cola_voz.put(sintetizar(frase))
+                self.respondido = True
         print(f"({frase}) " if relleno else f"{frase} ", end="", flush=True)
 
     def terminar(self):
@@ -422,6 +454,16 @@ def main():
                     ojos("contento")
                     if primera is None:
                         primera = time.time() - t1
+            except requests.RequestException as e:
+                # Un fallo del servicio (modelo que no carga, contenedor reiniciándose...) no cierra
+                # la conversación: se avisa, Bufit pone cara de duda y se sigue escuchando
+                print(f"\n[el servicio de diálogo ha fallado: {e}]")
+                if isinstance(e, requests.HTTPError) or e.response is not None:
+                    print(f"[respuesta: {e.response.text[:300]}]")
+                print("[mira: docker compose logs --tail 40 llm]\n")
+                ojos("dudoso")
+                time.sleep(1.5)
+                continue
             finally:
                 turno.terminar()
             t2 = time.time()

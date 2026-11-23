@@ -1,5 +1,5 @@
 {
-  "_comentario": "Frases fijas de Bufit, elegidas al azar sin repetir ninguna de las 3 últimas. Cortas, naturales y sin onomatopeyas (mmm, hmm), porque la voz las deletrea. 'espera': solo si la respuesta tarda más de 5 segundos; neutras, porque suenan sin saber qué ha dicho la persona. 'saludo_manana' (6-13 h), 'saludo_tarde' (13-21 h), 'saludo_noche' (21-6 h): para empezar la conversación.",
+  "_comentario": "Frases fijas de Bufit, elegidas al azar sin repetir ninguna de las 3 últimas. Cortas, naturales y sin onomatopeyas (mmm, hmm), porque la voz las deletrea. 'espera': si la respuesta tarda más de 5 segundos; neutras, porque suenan sin saber qué ha dicho la persona. 'espera_larga': si sigue tardando, unos segundos después. 'busqueda': cuando Bufit decide mirar en su base de conocimientos; nunca hablan de buscar ni de internet. 'saludo_manana' (6-13 h), 'saludo_tarde' (13-21 h), 'saludo_noche' (21-6 h): para empezar la conversación.",
   "espera": [
     "Pues...",
     "A ver...",
@@ -9,6 +9,21 @@
     "Claro...",
     "Ya...",
     "Sí, sí..."
+  ],
+  "espera_larga": [
+    "Dame un momentito más...",
+    "Ya casi lo tengo...",
+    "Un segundito, que lo estoy pensando...",
+    "Perdona, que hoy voy un poco lento...",
+    "Espera, que enseguida te digo..."
+  ],
+  "busqueda": [
+    "A ver, que lo recuerde bien...",
+    "Espera, que hago memoria...",
+    "Deja que me acuerde bien...",
+    "Esto me lo sé, a ver...",
+    "Un momento, que lo tengo aquí en la cabeza...",
+    "Déjame pensar un poquito..."
   ],
   "saludo_manana": [
     "Buenos días, soy Bufit. ¿Qué tal ha empezado el día?",

@@ -162,6 +162,35 @@
     50%, 58% { translate: calc(var(--ancho) * .19); }
   }
 
+  /* borracho: párpados desiguales y mirada que pierde el foco */
+  .cara.borracho .izq { --ps: 16%; --cy: -.08; --cr: -10deg; --px: .04; }
+  .cara.borracho .der { --ps: 38%; --cy: .075; --cr: 11deg; --px: -.035; }
+  .cara.borracho .ojos { animation: tambalear 3.1s ease-in-out infinite; }
+  .cara.borracho .pupila { animation: perder-foco 3.1s ease-in-out infinite; }
+  .cara.borracho .der .pupila { animation-delay: -.24s; }
+  @keyframes tambalear {
+    0%, 100% { rotate: -3deg; }
+    33% { rotate: 5deg; }
+    67% { rotate: -5deg; }
+    82% { rotate: 1deg; }
+  }
+  @keyframes perder-foco {
+    0%, 100% { translate: 0 calc(var(--ancho) * .05); }
+    32% { translate: calc(var(--ancho) * .15) calc(var(--ancho) * -.04); }
+    65% { translate: calc(var(--ancho) * -.13) calc(var(--ancho) * .08); }
+    83% { translate: calc(var(--ancho) * .03) 0; }
+  }
+
+  /* escuchando + voz: mientras la persona habla, Bufit se muestra atento sin seguir
+     cada sílaba. --voz es la "actividad" de la conversación (0 a 1), muy suavizada:
+     sube y baja en un segundo largo, no al ritmo de las palabras.
+     Se usan las propiedades scale y translate, que ningún otro estado usa en estas piezas. */
+  .cara { --voz: 0; }
+  .cara.escuchando .pupila { scale: calc(1 + var(--voz) * .09);
+    transition: transform .25s ease-out, width .35s, height .35s, opacity .3s, scale .8s ease-in-out; }
+  .cara.escuchando .ceja { translate: 0 calc(var(--voz) * var(--ancho) * -.05);
+    transition: transform .34s cubic-bezier(.22, .8, .28, 1), translate .8s ease-in-out; }
+
   .zetas { position: absolute; top: 16%; right: 22%; font-weight: 700; color: var(--blanco);
     opacity: 0; pointer-events: none; transition: opacity .6s; }
   .cara.dormido .zetas { opacity: 1; }
@@ -188,7 +217,9 @@
   @media (prefers-reduced-motion: reduce) {
     .cara *, .cara *::after { transition-duration: 0s !important; }
     .cara.pensando .pupila, .cara.dormido .ojos, .zetas span,
-    .cara.busca_carta .pupila, .cara.escaneando .pupila { animation: none; }
+    .cara.busca_carta .pupila, .cara.escaneando .pupila,
+    .cara.borracho .ojos, .cara.borracho .pupila,
+    .cara.borracho .der .pupila { animation: none; }
     .cara.busca_carta .ojo { --py: .14; }
     .zetas span:last-child { opacity: .9; }
   }
@@ -214,10 +245,11 @@
   <!-- los botones de estado se crean desde JavaScript -->
   <span class="separador"></span>
   <button id="btn-raton" title="La mirada sigue al ratón">Mirada: ratón</button>
+  <button id="btn-sonido" aria-pressed="false">Sonido: apagado</button>
   <button id="btn-parpadeo">Parpadear</button>
   <button id="btn-completa">Pantalla completa</button>
   <span class="mqtt" id="indicador-mqtt" title="Conexión con el broker MQTT">MQTT: desconectado</span>
-  <div class="ayuda">1–9: estados · T: tu turno · R: repíteme · B: busca la carta · S: escanear · M: mirada con el ratón · H: ocultar botones · F: pantalla completa · espacio: parpadear</div>
+  <div class="ayuda">1–9: estados · T: tu turno · R: repíteme · B: busca la carta · S: escanear · D: borracho · M: mirada con el ratón · H: ocultar botones · F: pantalla completa · espacio: parpadear</div>
 </div>
 
 <script src="mqtt.min.js"></script>
@@ -228,8 +260,8 @@
    El orquestador llama a bufit.estado() y la cámara a bufit.mirar(), o llegan por MQTT.
    ================================================================ */
 const ESTADOS = ["espera", "atento", "pensando", "sorprendido", "contento", "dudoso", "dormido", "escuchando", "concentrado",
-  "tu_turno", "repiteme", "busca_carta", "escaneando"];
-const TECLAS_ESTADO = { t: "tu_turno", r: "repiteme", b: "busca_carta", s: "escaneando" };
+  "tu_turno", "repiteme", "busca_carta", "escaneando", "borracho"];
+const TECLAS_ESTADO = { t: "tu_turno", r: "repiteme", b: "busca_carta", s: "escaneando", d: "borracho" };
 const NOMBRES_ESTADO = { tu_turno: "tu turno", repiteme: "repíteme", busca_carta: "busca la carta" };
 
 const cara = document.getElementById("cara");
@@ -252,6 +284,148 @@ let estadoActual = "espera";
 let siguiendoRaton = false;
 let pausaMiradaHasta = 0;   // mientras alguien de fuera (cámara, MQTT) dirige la mirada, no mira alrededor sola
 
+/* ---------- sonido */
+const btnSonido = document.getElementById("btn-sonido");
+const pupilaEscaneo = document.querySelector(".pupila");
+const ContextoAudio = window.AudioContext || window.webkitAudioContext;
+let audio;
+let habilitandoSonido = false;
+let sonidoActivo = false;
+let sonidoEscaneo;
+let temporizadorHipo;
+const tonosActivos = new Set();
+
+function actualizarBotonSonido() {
+  const reproduciendo = sonidoActivo && audio?.state === "running";
+  btnSonido.classList.toggle("activo", reproduciendo);
+  btnSonido.setAttribute("aria-pressed", String(reproduciendo));
+  if (!ContextoAudio) btnSonido.textContent = "Sonido no disponible";
+  else if (reproduciendo) btnSonido.textContent = "Sonido: activado";
+  else if (sonidoActivo) btnSonido.textContent = "Sonido: reanudar";
+  else btnSonido.textContent = "Sonido: apagado";
+}
+
+function tono(tipo, inicioHz, finalHz, volumen, demora, duracion) {
+  if (!sonidoActivo || audio.state !== "running" || document.hidden) return;
+  const inicio = audio.currentTime + demora;
+  const fin = inicio + duracion;
+  const oscilador = audio.createOscillator();
+  const ganancia = audio.createGain();
+  oscilador.type = tipo;
+  oscilador.frequency.setValueAtTime(inicioHz, inicio);
+  oscilador.frequency.exponentialRampToValueAtTime(finalHz, fin);
+  ganancia.gain.setValueAtTime(0, inicio);
+  ganancia.gain.linearRampToValueAtTime(volumen * 2, inicio + .012);
+  ganancia.gain.linearRampToValueAtTime(0, fin);
+  oscilador.connect(ganancia).connect(audio.destination);
+  tonosActivos.add(oscilador);
+  oscilador.onended = () => tonosActivos.delete(oscilador);
+  oscilador.start(inicio);
+  oscilador.stop(fin);
+}
+
+function hacerHipo() {
+  if (estadoActual !== "borracho" || !sonidoActivo || document.hidden) return;
+  tono("triangle", 290, 490, .052, 0, .065);
+  tono("sine", 425, 170, .04, .045, .11);
+  cejas.forEach(ceja => gestoCeja(ceja, -18, 0, 240));
+  temporizadorHipo = setTimeout(hacerHipo, 1900 + Math.random() * 1800);
+}
+
+function sincronizarHipo() {
+  clearTimeout(temporizadorHipo);
+  hacerHipo();
+}
+
+function detenerSonidoEscaneo() {
+  if (!sonidoEscaneo) return;
+  const { oscilador, ganancia, cuadro } = sonidoEscaneo;
+  cancelAnimationFrame(cuadro);
+  ganancia.gain.setTargetAtTime(0, audio.currentTime, .008);
+  oscilador.stop(audio.currentTime + .04);
+  sonidoEscaneo = undefined;
+}
+
+function sincronizarSonidoEscaneo() {
+  if (estadoActual !== "escaneando" || !sonidoActivo || document.hidden || movimientoReducido.matches) {
+    detenerSonidoEscaneo();
+    return;
+  }
+  if (sonidoEscaneo || audio.state !== "running") return;
+
+  const oscilador = audio.createOscillator();
+  const ganancia = audio.createGain();
+  const panorama = audio.createStereoPanner?.();
+  oscilador.type = "triangle";
+  ganancia.gain.value = 0;
+  oscilador.connect(ganancia);
+  if (panorama) ganancia.connect(panorama).connect(audio.destination);
+  else ganancia.connect(audio.destination);
+  oscilador.start();
+
+  function seguirMirada() {
+    const animacion = pupilaEscaneo.getAnimations().find(a => a.animationName === "escanear");
+    const avance = animacion?.effect.getComputedTiming().progress;
+    if (avance != null) {
+      // Mismos tramos que @keyframes escanear: pausas en 0–8 % y 50–58 %.
+      const ida = avance < .5;
+      const tramo = Math.max(0, (avance - (ida ? .08 : .58)) / .42);
+      const lado = (ida ? -1 : 1) * Math.cos(Math.PI * tramo);
+      const volumen = .053 * Math.sin(Math.PI * tramo);
+      const ahora = audio.currentTime;
+      oscilador.frequency.setTargetAtTime(340 + 90 * lado, ahora, .02);
+      panorama?.pan.setTargetAtTime(lado * .85, ahora, .02);
+      ganancia.gain.setTargetAtTime(volumen, ahora, .015);
+    }
+    sonidoEscaneo.cuadro = requestAnimationFrame(seguirMirada);
+  }
+
+  sonidoEscaneo = { oscilador, ganancia, cuadro: requestAnimationFrame(seguirMirada) };
+}
+
+btnSonido.disabled = !ContextoAudio;
+actualizarBotonSonido();
+btnSonido.onclick = async () => {
+  if (habilitandoSonido) return;
+  if (sonidoActivo && audio.state === "running") {
+    sonidoActivo = false;
+    sincronizarHipo();
+    detenerSonidoEscaneo();
+    tonosActivos.forEach(oscilador => oscilador.stop());
+    actualizarBotonSonido();
+    return;
+  }
+
+  habilitandoSonido = true;
+  btnSonido.textContent = "Sonido: activando…";
+  try {
+    if (!audio || audio.state === "closed") {
+      audio = new ContextoAudio();
+      audio.addEventListener("statechange", actualizarBotonSonido);
+    }
+    await audio.resume();
+    sonidoActivo = audio.state === "running";
+    actualizarBotonSonido();
+    if (!sonidoActivo) {
+      btnSonido.textContent = "Sonido: reintentar";
+      return;
+    }
+    tono("sine", 700, 880, .105, .018, .24);
+    sincronizarHipo();
+    sincronizarSonidoEscaneo();
+  } catch (error) {
+    sonidoActivo = false;
+    actualizarBotonSonido();
+    btnSonido.textContent = "Sonido: reintentar";
+    console.warn("No se pudo activar el sonido de Bufit:", error);
+  } finally {
+    habilitandoSonido = false;
+  }
+};
+document.addEventListener("visibilitychange", sincronizarSonidoEscaneo);
+document.addEventListener("visibilitychange", sincronizarHipo);
+movimientoReducido.addEventListener("change", sincronizarSonidoEscaneo);
+
 /* ---------- estados */
 function estado(nombre) {
   if (!ESTADOS.includes(nombre)) { console.warn("Estado desconocido:", nombre); return; }
@@ -264,7 +438,11 @@ function estado(nombre) {
       gestoCeja(cejas[0], -32, -5, 550);
       gestoCeja(cejas[1], -32, 5, 650);
     }
-    if (nombre === "tu_turno") cejas.forEach(ceja => gestoCeja(ceja, -32, 0, 520));
+    if (nombre === "tu_turno") {
+      cejas.forEach(ceja => gestoCeja(ceja, -32, 0, 520));
+      tono("sine", 523, 523, .06, 0, .15);
+      tono("sine", 659, 659, .055, .12, .22);
+    }
     if (nombre === "escaneando") cejas.forEach((ceja, i) => {
       gestoCeja(ceja, 14, i === 0 ? 4 : -4, 460);
     });
@@ -277,7 +455,10 @@ function estado(nombre) {
   cara.classList.remove(...ESTADOS);
   if (nombre === estadoActual && nombre === "busca_carta") void cara.offsetWidth;
   cara.classList.add(nombre);
+  const cambioDeEstado = estadoActual !== nombre;
   estadoActual = nombre;
+  if (cambioDeEstado) sincronizarHipo();
+  sincronizarSonidoEscaneo();
   if (nombre === "repiteme") parpadear();
   document.querySelectorAll("[data-estado]").forEach(b => b.classList.toggle("activo", b.dataset.estado === nombre));
 }
@@ -298,6 +479,7 @@ function aplicarMirada(x, y) {
 /* ---------- parpadeo */
 function parpadear() {
   if (estadoActual === "dormido") return;
+  tono("triangle", 510, 160, .043, .045, .075);
   globos.forEach(g => { g.classList.remove("cerrando"); void g.offsetWidth; g.classList.add("cerrando"); });
   cejas.forEach(ceja => {
     if (gestos.get(ceja)?.playState !== "running") gestoCeja(ceja, 12, 0, 170);
@@ -356,7 +538,7 @@ btnRaton.onclick = alternarRaton;
 document.addEventListener("mousemove", e => {
   if (siguiendoRaton) mirar((e.clientX / innerWidth) * 2 - 1, (e.clientY / innerHeight) * 2 - 1);
 });
-document.getElementById("btn-parpadeo").onclick = parpadear;
+document.getElementById("btn-parpadeo").onclick = () => parpadear();
 function pantallaCompleta() {
   document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
 }
@@ -368,6 +550,7 @@ document.addEventListener("keydown", e => {
   const nombre = TECLAS_ESTADO[e.key.toLowerCase()] ?? ESTADOS[n - 1];
   if (nombre) estado(nombre);
   else if (e.key === "m" || e.key === "M") alternarRaton();
+  else if (e.key === "v" || e.key === "V") alternarVozSimulada();
   else if (e.key === "h" || e.key === "H") {
     botonera.classList.toggle("oculta");
   }
@@ -375,8 +558,68 @@ document.addEventListener("keydown", e => {
   else if (e.key === " ") parpadear();
 });
 
+/* ---------- voz: nivel de la voz de quien habla (0 a 1), para que se note que escucha.
+   No es un ecualizador: el nivel solo sirve para saber SI la persona está hablando.
+   Con eso Bufit hace gestos de escucha a su propio ritmo:
+     - mientras hablas, se va poniendo un poco más atento (despacio, en ~1 s)
+     - de vez en cuando, un pequeño gesto de ceja, sin sincronizar con las palabras
+     - en las pausas tras una frase, asiente un poco ("sí, te sigo")
+   Solo tiene efecto en el estado "escuchando". */
+const ojosCaja = document.querySelector(".ojos");
+let vozBruta = 0, actividad = 0, ultimoSonido = 0, hablandoDesde = 0;
+let ultimoAsentir = 0, proximoGesto = 0;
+function voz(nivel) {
+  vozBruta = Math.max(0, Math.min(1, Number(nivel) || 0));
+  if (vozBruta > .15) {
+    if (!hablandoDesde) hablandoDesde = performance.now();
+    ultimoSonido = performance.now();
+  }
+}
+(function escuchar() {
+  const ahora = performance.now();
+  if (estadoActual !== "escuchando") {
+    actividad = 0; hablandoDesde = 0; ultimoSonido = 0;
+  } else {
+    const hablando = ahora - ultimoSonido < 600;            // las pausas cortas entre palabras no cuentan
+    actividad += ((hablando ? 1 : 0) - actividad) * .02;    // ~1 s para subir o bajar
+    // Asentir: tras hablar al menos 1,2 s, cuando llevas ~0,5 s callado
+    const pausa = ahora - ultimoSonido;
+    if (hablandoDesde && ultimoSonido - hablandoDesde > 1200 && pausa > 500 && pausa < 1500
+        && ahora - ultimoAsentir > 2200 && !movimientoReducido.matches) {
+      ultimoAsentir = ahora; hablandoDesde = 0;
+      const bajada = globos[0].offsetWidth * .055;
+      ojosCaja.animate([{ translate: "0 0" }, { translate: `0 ${bajada}px` }, { translate: "0 0" }],
+                       { duration: 520, easing: "ease-in-out" });
+    }
+    if (!hablando && pausa > 1500) hablandoDesde = 0;
+    // Gesto de ceja suelto mientras hablas, cada 2,2–4,8 s
+    if (hablando && ahora > proximoGesto) {
+      if (proximoGesto) {
+        const ceja = cejas[Math.floor(Math.random() * cejas.length)];
+        gestoCeja(ceja, -24, ceja === cejas[0] ? -5 : 5, 750);
+      }
+      proximoGesto = ahora + 2200 + Math.random() * 2600;
+    }
+  }
+  cara.style.setProperty("--voz", actividad.toFixed(3));
+  requestAnimationFrame(escuchar);
+})();
+
+// Tecla V: simula a alguien hablando (frases de ~3 s con pausas), para probar sin micrófono
+let simulacionVoz = null;
+function alternarVozSimulada() {
+  if (simulacionVoz) { clearInterval(simulacionVoz); simulacionVoz = null; voz(0); return; }
+  estado("escuchando");
+  let paso = 0;
+  simulacionVoz = setInterval(() => {
+    paso++;
+    const hablando = paso % 40 < 28;            // 3,4 s hablando y 1,4 s de pausa
+    voz(hablando ? .2 + .7 * Math.abs(Math.sin(paso * .9)) * Math.random() : 0);
+  }, 120);
+}
+
 /* ---------- lo que podrán usar las demás piezas de Bufit */
-window.bufit = { estado, mirar, parpadear, ESTADOS };
+window.bufit = { estado, mirar, parpadear, voz, ESTADOS };
 estado("espera");
 
 /* ---------- MQTT: los ojos obedecen los mensajes de bufit/pantalla/set
@@ -384,6 +627,7 @@ estado("espera");
      {"ojos": "contento"}              cambia de estado
      {"mirar": {"x": 0.5, "y": -0.2}}  mueve la mirada (de -1 a 1)
      {"parpadear": true}               parpadea una vez
+     {"voz": 0.6}                      nivel de la voz de quien habla (0 a 1), en "escuchando"
    Se pueden combinar en el mismo mensaje.
    Otro broker: abrir index.html?mqtt=ws://IP:9001 */
 if (typeof window.mqtt?.connect === "function") {
@@ -392,6 +636,9 @@ if (typeof window.mqtt?.connect === "function") {
   const indicador = document.getElementById("indicador-mqtt");
   const cliente = mqtt.connect(urlBroker, { reconnectPeriod: 2000 });
   cliente.on("connect", () => {
+    // Conectada al broker: duerme hasta que alguien diga otra cosa. Si conversar.py está
+    // en marcha, el broker devuelve enseguida el último estado guardado (retain) y lo despierta.
+    estado("dormido");
     cliente.subscribe(TEMA);
     indicador.textContent = "MQTT: conectado";
     indicador.classList.add("ok");
@@ -406,6 +653,7 @@ if (typeof window.mqtt?.connect === "function") {
     if (m.ojos) estado(m.ojos);
     if (m.mirar) mirar(m.mirar.x ?? 0, m.mirar.y ?? 0);
     if (m.parpadear) parpadear();
+    if (m.voz != null) voz(m.voz);
   });
 }
 </script>

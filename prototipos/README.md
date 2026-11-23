@@ -1,6 +1,6 @@
-# Prototipos de voz
+# Prototipos de voz y ojos
 
-# curl -X POST http://localhost:8013/reindexar
+> Estado completo del prototipo, parámetros y decisiones: [`CLAUDE.md`](CLAUDE.md).
 
 Piezas sueltas para probar la conversación por voz antes de adaptarlas a los contratos de `modulos/`.
 
@@ -10,7 +10,9 @@ Piezas sueltas para probar la conversación por voz antes de adaptarlas a los co
 | `llm/` | Conversación con historial por partida (Ollama, en su propio contenedor) | 8011 |
 | `conocimiento/` | RAG: busca en los `.md` de `conocimiento/documentos/` los trozos parecidos a la pregunta | 8013 |
 | `tts/` | Texto → audio (Piper) | 8012 |
-| `conversar.py` | Cliente que lo une todo: micrófono → STT → LLM → TTS → altavoz | — |
+| `mqtt/` | Broker MQTT (Mosquitto): los estados de los ojos | 1883 y 9001 (WebSocket) |
+| `ojos/` | Página web con los ojos animados de Bufit (se abre con doble clic) | — |
+| `conversar.py` | Cliente que lo une todo: micrófono → STT → LLM → TTS → altavoz, y publica el estado de los ojos | — |
 
 ## Arrancar los servicios
 

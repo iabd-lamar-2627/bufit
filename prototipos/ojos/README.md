@@ -1,7 +1,7 @@
 # Prototipo · Ojos de Bufit
 
 Página web a pantalla completa con los ojos de Bufit. Recibe los estados por MQTT (`bufit/pantalla/set` → `ojos`):
-`espera`, `atento`, `pensando`, `sorprendido`, `contento`, `dudoso`, `dormido`, `escuchando`, `concentrado`, `tu_turno`, `repiteme`, `busca_carta` y `escaneando`.
+`espera`, `atento`, `pensando`, `sorprendido`, `contento`, `dudoso`, `dormido`, `escuchando`, `concentrado`, `tu_turno`, `repiteme`, `busca_carta`, `escaneando` y `borracho`.
 
 - `escuchando` (8) levanta una ceja al entrar y sostiene la mirada. Envía `mirar` junto con el estado para orientarla hacia quien habla.
 - `concentrado` (9) entorna los ojos, baja y acerca las cejas y dirige la mirada hacia la zona de juego.
@@ -11,6 +11,8 @@ Página web a pantalla completa con los ojos de Bufit. Recibe los estados por MQ
 - `busca_carta` (B) mira a la bandeja un momento y vuelve a levantar la vista.
 - `escaneando` (S) recorre la bandeja sin detenerse en el centro y hace pausas breves en los extremos hasta que llega otro estado. Envía `{"ojos":"escaneando"}` al empezar a evaluar las cartas o fichas y cambia de estado cuando Bufit termine.
 
+- `borracho` (D) deja un párpado más caído y bambolea la mirada para hacer un gesto cómico.
+
 ## Probarla
 
 Abre `index.html` en el navegador (doble clic). No necesita servidor ni instalar nada.
@@ -18,13 +20,16 @@ Abre `index.html` en el navegador (doble clic). No necesita servidor ni instalar
 | Control | Qué hace |
 |---|---|
 | Botones o teclas 1–9 | Cambian de estado |
-| T / R / B / S | Tu turno / Repíteme / Busca la carta / Escaneando |
+| T / R / B / S / D | Tu turno / Repíteme / Busca la carta / Escaneando / Borracho |
 | M | La mirada sigue al ratón (simula la cámara) |
 | Espacio | Parpadea |
+| Botón Sonido | Activa o silencia los efectos de los ojos |
 | H | Oculta los botones (para la demo) |
 | F | Pantalla completa |
 
 Sola ya parpadea cada pocos segundos y, en `espera` y `atento`, mueve un poco la mirada para parecer viva.
+
+El sonido empieza desactivado. Pulsa **Sonido: apagado**. El botón mostrará **Sonido: activado** y emitirá un pitido de prueba. Después podrás oír las dos notas de **Tu turno**, el barrido de **Escaneando** un clic corto con cada parpadeo, incluidos los espontáneos y los dobles, y un hipo ocasional en **Borracho**. Los efectos se generan en el navegador.
 
 ## Cómo la controlarán las demás piezas
 
@@ -71,6 +76,12 @@ docker compose exec mqtt mosquitto_pub -t bufit/pantalla/set -m '{"mirar":{"x":-
 docker compose exec mqtt mosquitto_pub -t bufit/pantalla/set -m '{"parpadear":true}'
 ```
 
-Tema: `bufit/pantalla/set`. Mensajes en JSON con las claves `ojos`, `mirar` y `parpadear` (se pueden combinar).
+Tema: `bufit/pantalla/set`. Mensajes en JSON con las claves `ojos`, `mirar`, `parpadear` y `voz` (se pueden combinar).
+
+### Reacción a la voz
+
+Mientras alguien habla (estado `escuchando`), `conversar.py` manda el nivel de su voz unas 8 veces por segundo: `{"voz": 0.6}` (de 0 a 1).
+Las pupilas se abren y las cejas suben al ritmo de la voz, y en la primera pausa tras una frase Bufit asiente un poco.
+Para probarlo sin micrófono, pulsa **V**: simula a alguien hablando (vuelve a pulsar para parar).
 Broker en otro equipo: `index.html?mqtt=ws://IP:9001`.
 `mqtt.min.js` es la librería mqtt.js 5.10.1 copiada aquí para que funcione sin internet.
