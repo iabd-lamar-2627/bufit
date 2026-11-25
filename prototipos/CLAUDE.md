@@ -115,6 +115,7 @@ STT ~1,4 s · empieza a hablar 2,5-5 s tras callarte (incluye 1 s de silencio de
 3. Volumen de Docker para los modelos de Ollama.
 4. Medir en el hardware objetivo (o simularlo con `cpus:` por contenedor) con las dos cámaras.
 5. Añadir `borracho` al contrato o dejarlo como estado de demostración.
+6. «¿Qué juegos/recetas conoces?»: el RAG solo devuelve K trozos y Bufit nombra 2-3. Decidido (no catálogo completo): al arrancar, el `llm` pide a `conocimiento` cuántos documentos hay por carpeta y añade una línea al prompt («Conoces 18 juegos, 46 recetas…», ~30 tokens). Si piden la lista entera: dice cuántos conoce, nombra dos o tres y **el modelo improvisa una broma** sobre que son demasiadas para decirlas todas (sin frase fija en el prompt, para que no se repita); luego pregunta qué le apetece.
 
 ## Normas para trabajar aquí
 
