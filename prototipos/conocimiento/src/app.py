@@ -1,20 +1,32 @@
 """Conocimiento · RAG. Indexa los .md de documentos/ y busca los trozos más parecidos a una pregunta.
 
 - GET  /salud       cuántos documentos y trozos hay indexados
-- POST /buscar      {"texto": "...", "k": 3} → los k trozos más parecidos, con fuente y puntuación
+- POST /buscar      {"texto": "...", "k": 3, "modo": "hibrida"} → los k trozos más parecidos, con fuente y puntuación
 - POST /reindexar   vuelve a leer los .md (después de editarlos); ?completo=true lo rehace todo
 
 Los embeddings los calcula el contenedor de Ollama con un modelo multilingüe (bge-m3).
 Los vectores se guardan con Chroma en /app/vectores y se reutilizan al arrancar: solo se
 recalculan los documentos nuevos o cambiados (cada trozo guarda la huella de su documento).
+
+Búsqueda híbrida (MODO_BUSQUEDA):
+- semántica: embeddings (bge-m3). Entiende el sentido aunque se use otras palabras.
+- por palabras: BM25. Acierta nombres y palabras exactas ("cuarenta", "PIN", "giraboix").
+- híbrida (por defecto): hace las dos y mezcla las listas con Reciprocal Rank Fusion.
+La "puntuacion" que se devuelve es siempre el parecido semántico (0 a 1), porque el llm la
+compara con su UMBRAL. Si un trozo sale también entre los primeros por palabras, los dos
+métodos están de acuerdo y se le suma BONUS_ACUERDO.
 """
 import hashlib
 import logging
+import math
 import os
 import re
 import time
+import unicodedata
+from collections import Counter
 
 import chromadb
+import numpy as np
 from fastapi import FastAPI
 from ollama import Client, ResponseError
 from pydantic import BaseModel
@@ -25,6 +37,11 @@ DIR_DOCUMENTOS = os.getenv("DIR_DOCUMENTOS", "/app/documentos")
 DIR_VECTORES = os.getenv("DIR_VECTORES", "/app/vectores")
 TAM_TROZO = int(os.getenv("TAM_TROZO", "800"))   # caracteres aproximados por trozo
 COLECCION = "documentos"
+MODO_BUSQUEDA = os.getenv("MODO_BUSQUEDA", "hibrida")    # hibrida, semantica o palabras
+CANDIDATOS = int(os.getenv("CANDIDATOS", "10"))         # cuántos trozos trae cada búsqueda antes de mezclar
+RRF_K = 60                                              # constante habitual de Reciprocal Rank Fusion
+PUESTOS_ACUERDO = int(os.getenv("PUESTOS_ACUERDO", "3"))  # entre los N primeros por palabras = "de acuerdo"
+BONUS_ACUERDO = float(os.getenv("BONUS_ACUERDO", "0.1"))  # se suma a la puntuación si los dos coinciden
 
 # Chroma intenta enviar estadísticas de uso y llena el log de errores inofensivos: los silenciamos
 logging.getLogger("chromadb.telemetry").setLevel(logging.CRITICAL)
@@ -89,6 +106,67 @@ def coleccion():
     )
 
 
+# ------------------------------------------------------------ búsqueda por palabras (BM25)
+
+# Palabras tan comunes que no dicen nada del tema
+VACIAS = set("""a al algo como con cual cuando de del donde el en es esa ese eso esta este esto
+estos ha hay la las le les lo los me mi mis muy nada no nos o para pero por que quiero se
+si sin sobre su sus te tu tus un una unas uno unos y ya yo""".split())
+
+
+def palabras(texto: str) -> list[str]:
+    """Minúsculas, sin tildes, sin palabras vacías y sin la s del plural ("fichas" → "ficha")."""
+    texto = "".join(c for c in unicodedata.normalize("NFD", texto.lower())
+                    if unicodedata.category(c) != "Mn")
+    resultado = []
+    for p in re.findall(r"\w+", texto):
+        if p in VACIAS:
+            continue
+        if len(p) > 4 and p.endswith("s"):
+            p = p[:-1]
+        resultado.append(p)
+    return resultado
+
+
+class BM25:
+    """BM25 escrito a mano (sin librerías) para que se vea cómo funciona.
+
+    Puntuación de un trozo = suma, por cada palabra de la pregunta que aparece en él, de
+        rareza(palabra) × frecuencia saturada en el trozo, corregida por la longitud del trozo
+    """
+    K1 = 1.5    # saturación: a partir de unas pocas apariciones, repetir la palabra casi no suma
+    B = 0.75    # cuánto se penaliza a los trozos largos (0 = nada, 1 = del todo)
+
+    def construir(self, col):
+        datos = col.get(include=["documents"])
+        self.ids = datos["ids"]
+        self.frecuencias = [Counter(palabras(t)) for t in datos["documents"]]
+        self.longitudes = [sum(f.values()) for f in self.frecuencias]
+        self.media = (sum(self.longitudes) / len(self.longitudes)) if self.longitudes else 0
+        n = len(self.ids)
+        en_cuantos = Counter(p for f in self.frecuencias for p in f)     # en cuántos trozos sale cada palabra
+        # Rareza (IDF): las palabras que salen en pocos trozos valen mucho; las de todos, casi nada
+        self.rareza = {p: math.log(1 + (n - df + 0.5) / (df + 0.5)) for p, df in en_cuantos.items()}
+
+    def buscar(self, texto: str, n: int) -> list[tuple[str, float]]:
+        """Los n trozos con más puntuación (solo los que tienen alguna palabra de la pregunta)."""
+        pregunta = set(palabras(texto))
+        puntos = []
+        for id_, frec, largo in zip(self.ids, self.frecuencias, self.longitudes):
+            p = 0.0
+            for palabra in pregunta:
+                tf = frec.get(palabra, 0)
+                if tf:
+                    p += self.rareza[palabra] * tf * (self.K1 + 1) / (
+                        tf + self.K1 * (1 - self.B + self.B * largo / self.media))
+            if p > 0:
+                puntos.append((id_, p))
+        return sorted(puntos, key=lambda x: -x[1])[:n]
+
+
+bm25 = BM25()
+
+
 def huella(texto: str) -> str:
     """Resumen del documento y de cómo se trocea: si cambia algo, cambia la huella."""
     return hashlib.sha1(f"{TAM_TROZO}\n{texto}".encode("utf-8")).hexdigest()
@@ -140,6 +218,8 @@ def indexar(completo: bool = False) -> dict:
         col.delete(where={"fuente": fuente})
         print(f"  {fuente}: quitado (ya no está)", flush=True)
 
+    bm25.construir(col)
+
     resumen = {"documentos": len(vistas), "indexados": nuevos, "sin_cambios": iguales,
                "quitados": len(borrados), "trozos": col.count(),
                "segundos": round(time.time() - inicio, 1)}
@@ -173,6 +253,7 @@ def preparar():
 class Busqueda(BaseModel):
     texto: str
     k: int = 3
+    modo: str | None = None     # hibrida, semantica o palabras; si no se dice, MODO_BUSQUEDA
 
 
 @app.get("/salud")
@@ -186,21 +267,57 @@ def buscar(busqueda: Busqueda):
     col = coleccion()
     if col.count() == 0:
         return {"resultados": []}
-    r = col.query(
-        query_embeddings=embeber([busqueda.texto]),
-        n_results=min(busqueda.k, col.count()),
-        include=["documents", "metadatas", "distances"],
-    )
-    resultados = [
-        {
+    modo = busqueda.modo or MODO_BUSQUEDA
+    n = min(max(CANDIDATOS, busqueda.k), col.count())
+    vector = embeber([busqueda.texto])[0]
+
+    # 1. Búsqueda semántica: los n trozos con el vector más parecido
+    r = col.query(query_embeddings=[vector], n_results=n, include=[])
+    puesto_sem = {id_: i + 1 for i, id_ in enumerate(r["ids"][0])}
+
+    # 2. Búsqueda por palabras (BM25)
+    por_palabras = bm25.buscar(busqueda.texto, n)
+    puesto_pal = {id_: i + 1 for i, (id_, _) in enumerate(por_palabras)}
+    puntos_pal = dict(por_palabras)
+
+    # 3. Ordenar según el modo. Híbrida: Reciprocal Rank Fusion, cada lista da 1/(60 + puesto)
+    if modo == "semantica":
+        orden = list(puesto_sem)
+    elif modo == "palabras":
+        orden = list(puesto_pal)
+    else:
+        rrf = Counter()
+        for puestos in (puesto_sem, puesto_pal):
+            for id_, puesto in puestos.items():
+                rrf[id_] += 1 / (RRF_K + puesto)
+        orden = [id_ for id_, _ in rrf.most_common()]
+    orden = orden[:busqueda.k]
+    if not orden:
+        return {"resultados": []}
+
+    # 4. Parecido semántico de cada elegido (también de los que solo encontró BM25)
+    elegidos = col.get(ids=orden, include=["documents", "metadatas", "embeddings"])
+    por_id = dict(zip(elegidos["ids"], zip(elegidos["documents"], elegidos["metadatas"],
+                                            elegidos["embeddings"])))
+    q = np.asarray(vector)
+    resultados = []
+    for id_ in orden:
+        texto, meta, emb = por_id[id_]
+        e = np.asarray(emb)
+        semantica = float(q @ e / (np.linalg.norm(q) * np.linalg.norm(e)))
+        acuerdo = modo == "hibrida" and puesto_pal.get(id_, 99) <= PUESTOS_ACUERDO
+        resultados.append({
             "texto": texto,
             "fuente": meta["fuente"],
             "titulo": meta["titulo"],
-            "puntuacion": round(1 - distancia, 3),   # distancia coseno → parecido de 0 a 1
-        }
-        for texto, meta, distancia in zip(r["documents"][0], r["metadatas"][0], r["distances"][0])
-    ]
-    return {"resultados": resultados}
+            # Lo que usa el llm con su UMBRAL: el parecido semántico, con premio si las dos búsquedas coinciden
+            "puntuacion": round(min(1.0, semantica + (BONUS_ACUERDO if acuerdo else 0)), 3),
+            "semantica": round(semantica, 3),
+            "bm25": round(puntos_pal.get(id_, 0.0), 2),
+            "puesto_semantica": puesto_sem.get(id_),
+            "puesto_palabras": puesto_pal.get(id_),
+        })
+    return {"modo": modo, "resultados": resultados}
 
 
 @app.post("/reindexar")

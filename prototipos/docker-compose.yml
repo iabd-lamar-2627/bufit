@@ -68,6 +68,8 @@ services:
       OLLAMA_HOST: http://ollama:11434
       MODELO_EMBEDDINGS: bge-m3
       TAM_TROZO: "400"                   # trozos pequeños: búsqueda más precisa y menos texto para el modelo
+      MODO_BUSQUEDA: hibrida             # hibrida (BM25 + embeddings) · semantica (solo embeddings) · palabras (solo BM25)
+      BONUS_ACUERDO: "0.1"               # se suma al parecido si el trozo sale también entre los 3 primeros por palabras
     volumes:
       - ./conocimiento/documentos:/app/documentos:ro   # tus .md (solo lectura)
       - ./conocimiento/vectores:/app/vectores          # base de vectores generada
