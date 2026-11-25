@@ -2,11 +2,13 @@
 
 - GET  /salud       cuántos documentos y trozos hay indexados
 - POST /buscar      {"texto": "...", "k": 3} → los k trozos más parecidos, con fuente y puntuación
-- POST /reindexar   vuelve a leer los .md (después de editarlos)
+- POST /reindexar   vuelve a leer los .md (después de editarlos); ?completo=true lo rehace todo
 
 Los embeddings los calcula el contenedor de Ollama con un modelo multilingüe (bge-m3).
-Los vectores se guardan con Chroma en /app/vectores.
+Los vectores se guardan con Chroma en /app/vectores y se reutilizan al arrancar: solo se
+recalculan los documentos nuevos o cambiados (cada trozo guarda la huella de su documento).
 """
+import hashlib
 import logging
 import os
 import re
@@ -82,21 +84,44 @@ def coleccion():
     return chroma.get_or_create_collection(
         COLECCION,
         embedding_function=None,                 # los embeddings los calculamos nosotros con Ollama
-        metadata={"hnsw:space": "cosine"},        # similitud por coseno
+        metadata={"hnsw:space": "cosine",         # similitud por coseno
+                  "modelo": MODELO_EMBEDDINGS},   # con otro modelo, los vectores guardados no sirven
     )
 
 
-def indexar() -> dict:
-    """Borra el índice y vuelve a indexar todos los documentos."""
-    inicio = time.time()
+def huella(texto: str) -> str:
+    """Resumen del documento y de cómo se trocea: si cambia algo, cambia la huella."""
+    return hashlib.sha1(f"{TAM_TROZO}\n{texto}".encode("utf-8")).hexdigest()
+
+
+def borrar_indice():
     try:
         chroma.delete_collection(COLECCION)
     except Exception:
         pass
+
+
+def indexar(completo: bool = False) -> dict:
+    """Pone el índice al día. Solo calcula los embeddings de los documentos nuevos o cambiados,
+    y quita los que ya no están. Con completo=True borra el índice y lo rehace entero."""
+    inicio = time.time()
+    if completo or coleccion().metadata.get("modelo") != MODELO_EMBEDDINGS:
+        borrar_indice()
     col = coleccion()
 
-    documentos = 0
+    # Huella de cada documento ya indexado (la llevan todos sus trozos)
+    guardadas = {m["fuente"]: m.get("huella") for m in col.get(include=["metadatas"])["metadatas"]}
+
+    nuevos = iguales = 0
+    vistas = set()
     for fuente, texto in leer_documentos():
+        vistas.add(fuente)
+        h = huella(texto)
+        if guardadas.get(fuente) == h:
+            iguales += 1
+            continue
+        if fuente in guardadas:
+            col.delete(where={"fuente": fuente})   # ha cambiado: fuera los trozos viejos
         titulo = titulo_de(texto, fuente)
         trozos = trocear(texto, titulo)
         if not trozos:
@@ -105,15 +130,21 @@ def indexar() -> dict:
             ids=[f"{fuente}#{i}" for i in range(len(trozos))],
             documents=trozos,
             embeddings=embeber(trozos),
-            metadatas=[{"fuente": fuente, "titulo": titulo}] * len(trozos),
+            metadatas=[{"fuente": fuente, "titulo": titulo, "huella": h}] * len(trozos),
         )
-        documentos += 1
+        nuevos += 1
         print(f"  {fuente}: {len(trozos)} trozos", flush=True)
 
-    resumen = {"documentos": documentos, "trozos": col.count(),
+    borrados = sorted(set(guardadas) - vistas)
+    for fuente in borrados:
+        col.delete(where={"fuente": fuente})
+        print(f"  {fuente}: quitado (ya no está)", flush=True)
+
+    resumen = {"documentos": len(vistas), "indexados": nuevos, "sin_cambios": iguales,
+               "quitados": len(borrados), "trozos": col.count(),
                "segundos": round(time.time() - inicio, 1)}
-    print(f"Indexados {resumen['documentos']} documentos, {resumen['trozos']} trozos "
-          f"({resumen['segundos']} s)", flush=True)
+    print(f"Índice al día: {nuevos} indexados, {iguales} sin cambios, {len(borrados)} quitados · "
+          f"{resumen['trozos']} trozos ({resumen['segundos']} s)", flush=True)
     return resumen
 
 
@@ -173,5 +204,5 @@ def buscar(busqueda: Busqueda):
 
 
 @app.post("/reindexar")
-def reindexar():
-    return indexar()
+def reindexar(completo: bool = False):
+    return indexar(completo)
