@@ -4,7 +4,17 @@ Esta es la pieza clave del diseno: el resto del sistema habla con este
 contrato y no sabe a que se esta jugando. Anadir un juego nuevo es escribir
 una clase mas, no tocar el sistema.
 """
+import json
 from abc import ABC, abstractmethod
+from pathlib import Path
+
+CARPETA_JUEGOS = Path(__file__).parent / "juegos"
+
+
+def cargar_parametros(nombre: str) -> dict:
+    """Lee los parametros de un juego de src/juegos/<nombre>.json."""
+    with open(CARPETA_JUEGOS / f"{nombre}.json", encoding="utf-8") as f:
+        return json.load(f)
 
 
 class Juego(ABC):

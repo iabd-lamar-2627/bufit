@@ -5,7 +5,7 @@ La cadena de la mesa se guarda en orden, de izquierda a derecha, con cada
 ficha ya orientada: el segundo numero de una ficha siempre encaja con el
 primero de la siguiente.
 """
-from ..base import Juego
+from ..base import Juego, cargar_parametros
 
 MAX = 6
 
@@ -31,17 +31,11 @@ def misma_ficha(f1: str, f2: str) -> bool:
 
 class Domino(Juego):
     nombre = "domino"
+    # Se lee una vez al arrancar, de domino.json (al lado de este fichero)
+    _parametros = cargar_parametros(nombre)
 
     def parametros(self) -> dict:
-        return {
-            "juego": "domino",
-            "fichas": 28,
-            "mano": 7,
-            "pozo": True,
-            "puntos_para_ganar": 100,
-            "empieza": "jugador",
-            "segundos_por_turno_recomendado": 60,
-        }
+        return dict(self._parametros)   # copia: quien la reciba no puede cambiar la original
 
     # ---------------------------------------------------------------- jugadas
     def jugadas_legales(self, estado: dict, mano: list[str]) -> list[dict]:
