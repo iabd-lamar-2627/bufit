@@ -16,6 +16,7 @@ services:
       MODELO_WHISPER: small               # base era más rápido pero confundía "parchís" con "parches"
       HAZ: "2"                            # beam size: 1 es lo más rápido, 5 (el de Whisper) acierta más; 2 es el término medio
       HILOS: "0"                          # núcleos para Whisper; 0 = todos los del contenedor
+      VAD_UMBRAL: "0.35"                  # detector de voz: 0.5 (Whisper) descartaba voz flojita; más bajo deja pasar más
       # Vocabulario que Whisper no reconoce bien por sí solo. Lista corta: si es muy larga, se inventa palabras
       PROMPT_WHISPER: "Bufit, Xàbia, Montgó, dominó, parchís, fichas, paella, fideuà, allioli, Imserso."
     volumes:
@@ -44,12 +45,13 @@ services:
       MODELO: qwen3:8b
       PENSAR: "false"                    # qwen3 piensa antes de responder: lo desactivamos
       MODELO_REACCION: ""                # modelo pequeño para una frase mientras busca. Probado con llama3.2:3b: frases sin sentido que el 8B copiaba
-      K: "1"                             # trozos de documento por turno: cada uno cuesta segundos de lectura en CPU
+      K: "2"                             # trozos por búsqueda automática (mixto y umbral): cada uno cuesta unos 4 s de lectura en CPU; 2 da explicaciones más completas
       MAX_MENSAJES: "0"                  # 0 = sin recorte
       CONOCIMIENTO_URL: http://conocimiento:8000
-      MODO_BUSQUEDA: modelo              # modelo: Bufit decide cuándo buscar (herramienta) · umbral: busca siempre con umbral doble
+      MODO_BUSQUEDA: mixto               # mixto: busca ya si la frase nombra un tema de la base, si no decide el modelo · modelo: solo decide el modelo · umbral: busca siempre con umbral doble
       K_HERRAMIENTA: "2"                 # modo modelo: trozos de documento por búsqueda
-      MAX_TOKENS: "110"                  # tope por respuesta (unas 3 frases); 0 = sin tope
+      MAX_TOKENS: "110"                  # tope por respuesta en la charla (unas 3 frases); 0 = sin tope
+      MAX_TOKENS_DOC: "220"              # tope cuando explica algo de la base (reglas, recetas, trámites)
       UMBRAL: "0.58"                     # parecido mínimo (0 a 1) para usar un trozo de documento
       UMBRAL_ALTO: "0.68"                # modo umbral: parecido necesario si la frase no nombra un tema de la base
     depends_on:

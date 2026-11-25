@@ -25,9 +25,9 @@ Un contenedor por pieza (`docker-compose.yml`). `conversar.py` y la página de l
 
 | Servicio | Puerto | Qué hace | Parámetros (en `docker-compose.yml`) |
 |---|---|---|---|
-| `stt` | 8010 | Audio → texto con faster-whisper (CPU, int8, VAD, filtro de alucinaciones) | `MODELO_WHISPER: small` (base confundía "parchís"); `HAZ: "2"` (beam size: 1 rápido, 5 preciso); `HILOS: "0"` (todos los núcleos); `PROMPT_WHISPER` (vocabulario raro, lista corta) |
+| `stt` | 8010 | Audio → texto con faster-whisper (CPU, int8, VAD, filtro de alucinaciones) | `MODELO_WHISPER: small` (base confundía "parchís"); `HAZ: "2"` (beam size: 1 rápido, 5 preciso); `HILOS: "0"` (todos los núcleos); `VAD_UMBRAL: "0.35"` (detector de voz; 0.5 descartaba voz flojita); `PROMPT_WHISPER` (vocabulario raro, lista corta) |
 | `ollama` | interno 11434 | Servidor de modelos. Modelos en `./ollama/modelos` | `OLLAMA_KEEP_ALIVE: "-1"` (nunca descarga el modelo de memoria); `OLLAMA_NOPRUNE: "1"` (no borra ficheros al arrancar) |
-| `llm` | 8011 | Conversación: historial por partida en memoria, prompt, herramienta de búsqueda, respuesta frase a frase | `MODELO: qwen3:8b`; `PENSAR: "false"` (sin razonamiento, más rápido); `MODO_BUSQUEDA: modelo`; `K_HERRAMIENTA: "2"`; `UMBRAL: "0.58"`; `UMBRAL_ALTO: "0.68"`; `MAX_TOKENS: "110"`; `MAX_MENSAJES: "0"` (sin recorte); `MODELO_REACCION: ""` (desactivado); `K: "1"` (modo umbral) |
+| `llm` | 8011 | Conversación: historial por partida en memoria, prompt, herramienta de búsqueda, respuesta frase a frase | `MODELO: qwen3:8b`; `PENSAR: "false"` (sin razonamiento, más rápido); `MODO_BUSQUEDA: mixto`; `K_HERRAMIENTA: "2"`; `UMBRAL: "0.58"`; `UMBRAL_ALTO: "0.68"`; `MAX_TOKENS: "110"` (charla); `MAX_TOKENS_DOC: "220"` (explicando algo de la base); `MAX_MENSAJES: "0"` (sin recorte); `MODELO_REACCION: ""` (desactivado); `K: "2"` (trozos en la búsqueda automática de los modos mixto y umbral; 2 da explicaciones más completas a cambio de ~4 s) |
 | `conocimiento` | 8013 | RAG: indexa los `.md` de `conocimiento/documentos/` con Chroma y embeddings bge-m3 (vía ollama) | `MODELO_EMBEDDINGS: bge-m3`; `TAM_TROZO: "400"` |
 | `tts` | 8012 | Texto → audio con Piper. Limpia mmm/hmm, jaja, emojis, asteriscos | `VOZ: es_ES-davefx-medium` |
 | `mqtt` | 1883 (MQTT) y 9001 (WebSocket) | Broker Mosquitto (`mqtt/mosquitto.conf`, sin contraseña, solo red local) | — |
@@ -35,8 +35,9 @@ Un contenedor por pieza (`docker-compose.yml`). `conversar.py` y la página de l
 ### llm (`llm/src/app.py`)
 
 - Endpoints: `POST /conversar`, `POST /conversar/stream` (NDJSON: `{"relleno"}`, `{"frase"}`, `{"fin", tokens_seg, fuentes, medidas}`), `POST /saludo` (según la hora local que manda el cliente; se guarda en el historial), `GET /relleno?tipo=`, `GET/DELETE /historial/{partida}`, `GET /salud`.
-- **Prompt**: `PROMPT_BASE` (compañero de charla de cualquier tema, especialista en juegos de mesa, primera persona, 1-2 frases, sin coletillas, no inventa datos de la persona/tiempo/fecha, no ofrece buscar ni internet, no ofrece cosas) + `PROMPT_HERRAMIENTA` (modo modelo) o `PROMPT_CORCHETES` (modo umbral).
-- **`MODO_BUSQUEDA: modelo`** (actual): el modelo tiene la herramienta `buscar_conocimiento(consulta)` y decide cuándo usarla. Charla normal = 1 pasada; con búsqueda = 2 pasadas. La llamada y el resultado se guardan en el historial (así "sí, sigue" conserva el documento). Al buscar manda un relleno de tipo `busqueda`.
+- **Prompt**: `PROMPT_BASE` (compañero de charla de cualquier tema, especialista en juegos de mesa, primera persona, 1-2 frases, sin coletillas, no inventa datos de la persona/tiempo/fecha, no ofrece buscar ni internet; para el tiempo o noticias sugiere radio, tele o móvil; nunca menciona su base ni que ha buscado; si la búsqueda no trae nada, responde con lo que sabe salvo en trámites, ayudas, salud y dinero) + `PROMPT_HERRAMIENTA` (modos mixto y modelo) o `PROMPT_CORCHETES` (modo umbral).
+- **`MODO_BUSQUEDA: mixto`** (actual): si la frase contiene una palabra clave de la base (`PALABRAS_CLAVE`: juegos, receta, trámite, Imserso…), se busca antes de llamar al modelo y el documento va entre corchetes en el mensaje, que se guarda así en el historial (continuidad y caché). Si no, actúa como el modo `modelo`. Se añadió porque el modelo a veces no buscaba cuando debía (dijo que las fichas de dominó son cuadradas). Palabras demasiado comunes («ayuda», «dicho», «partida», «plato», «contacto», «Xàbia»/«Jávea», porque vive allí) se quitaron de la lista porque disparaban búsquedas falsas.
+- **`MODO_BUSQUEDA: modelo`**: el modelo tiene la herramienta `buscar_conocimiento(consulta)` y decide cuándo usarla. Charla normal = 1 pasada; con búsqueda = 2 pasadas. La llamada y el resultado se guardan en el historial (así "sí, sigue" conserva el documento). Al buscar manda un relleno de tipo `busqueda`.
 - **`MODO_BUSQUEDA: umbral`** (reserva): busca en cada turno; un trozo entra si su parecido ≥ `UMBRAL_ALTO`, o ≥ `UMBRAL` si la frase contiene una palabra clave de la base (`PALABRAS_CLAVE`).
 - **Caché del prompt (crítico en CPU)**: el principio del prompt no debe cambiar entre llamadas. Por eso: el contexto RAG va dentro del último mensaje de usuario (no como `system`), y **las herramientas se mandan en todas las pasadas** (si una pasada va sin ellas, Ollama relee todo el prompt: de 2 s a 20-30 s).
 - `MAX_TOKENS`: si la respuesta llega al tope, la última frase a medias no se dice ni se guarda.
@@ -46,6 +47,7 @@ Un contenedor por pieza (`docker-compose.yml`). `conversar.py` y la página de l
 
 - Micrófono con cola de bloques de 30 ms; umbral de inicio/fin adaptativo al ruido; `SILENCIO_FIN = 1.0` s (**no bajarlo**: corta a la persona); máx. 15 s por frase.
 - Reproduce cada frase en cuanto llega (hilo reproductor). Rellenos: a los 5 s sin respuesta (`espera`), luego cada 7 s (`espera_larga`), máx. 3 por turno (`ESPERA_RELLENO`, `ESPERA_SIGUIENTE`, `MAX_RELLENOS`).
+- Al arrancar espera a que el `llm` responda en `/salud` (el modelo puede tardar en cargar) antes de saludar.
 - Si el servicio falla en un turno, avisa, pone los ojos en `dudoso` y sigue escuchando.
 - Publica en MQTT (`bufit/pantalla/set`) el estado de los ojos con `retain` y deja una **última voluntad** `{"ojos":"dormido"}`. Mientras hablas publica `{"voz": 0-1}` ~8 veces/s.
   - espera (esperando voz) · escuchando (hablas) · pensando (STT + modelo) · contento (Bufit habla) · repiteme (Whisper no entendió) · dudoso (fallo del servicio) · dormido (60 s sin voz, `DORMIR_TRAS`, o al salir).
@@ -93,8 +95,9 @@ STT ~1,4 s · empieza a hablar 2,5-5 s tras callarte (incluye 1 s de silencio de
 
 - **Todo va lentísimo / el modelo tarda 2 min en cargar**: suele estar arrancado CVAT (curso de etiquetado) y se come CPU y ~5 GB de RAM. Pararlo: `docker stop $(docker ps -q --filter "name=cvat") $(docker ps -q --filter "name=nuclio") traefik` y `docker compose restart ollama llm`.
 - **`model "qwen3:8b" not found`**: faltan los pesos en `ollama/modelos/models/blobs` (una limpieza del Mac los borró una vez). Volver a hacer `pull`. Pendiente: mover los modelos de Ollama a un volumen de Docker para que las limpiezas no los toquen.
-- **`RemoteDisconnected` al empezar**: el `llm` aún está cargando el modelo ("Waiting for application startup"). Esperar a "listo".
-- Turnos de búsqueda con lectura de 20-30 s: algo ha cambiado el principio del prompt (ver "caché del prompt").
+- **`RemoteDisconnected` al empezar**: el `llm` aún está cargando el modelo ("Waiting for application startup"). Esperar a "listo". `conversar.py` ya espera solo.
+- Leer documentos cuesta: en CPU el modelo lee ~30 tokens/s, y cada trozo de 400 caracteres son unos 110 tokens (~4 s). Con `K: "2"` un turno con documento tarda unos 8-10 s; Manol prefiere explicaciones completas. Turnos de búsqueda con lectura de 20-30 s: algo ha cambiado el principio del prompt (ver "caché del prompt").
+- «Whisper no ha entendido nada» repetido: `docker compose logs stt` dice el motivo (el detector de voz no encontró voz → bajar `VAD_UMBRAL` o hablar más cerca; Whisper cree que no es voz → filtro `no_speech_prob`).
 - Whisper: alucinaciones tipo "¡Suscríbete!" se filtran; si falla en palabras raras, añadirlas a `PROMPT_WHISPER` o subir `HAZ`.
 
 ## Decisiones tomadas (y por qué)

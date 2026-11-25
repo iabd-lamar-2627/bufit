@@ -373,6 +373,26 @@ def sintetizar(texto):
     return r.content
 
 
+def esperar_servicios():
+    """Espera a que el servicio de diálogo haya cargado el modelo (tras arrancar puede tardar)."""
+    avisado = False
+    while not salir:
+        try:
+            if requests.get(f"{LLM}/salud", timeout=3).ok:
+                if avisado:
+                    print(" listo.")
+                return
+        except requests.RequestException:
+            pass
+        if not avisado:
+            print("Esperando a que Bufit cargue el modelo...", end="", flush=True)
+            avisado = True
+        else:
+            print(".", end="", flush=True)
+        time.sleep(3)
+    raise Interrumpido
+
+
 def saludar(partida):
     """Bufit empieza la conversación. Se le manda la hora local para que elija el saludo."""
     try:
@@ -423,6 +443,7 @@ def main():
     try:
         ruido = calibrar()
         print(f"\n{partida} · Di 'adiós' para terminar.\n")
+        esperar_servicios()
         saludar(partida)
 
         while not salir:

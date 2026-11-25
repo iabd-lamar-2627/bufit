@@ -7,8 +7,12 @@
 - GET    /historial/{partida}   descarga el historial completo
 - DELETE /historial/{partida}   borra el historial (al cerrar la partida)
 
-Base de conocimientos (RAG), dos modos (MODO_BUSQUEDA):
-- "modelo" (por defecto): el modelo decide cuándo buscar. Tiene una herramienta
+Base de conocimientos (RAG), tres modos (MODO_BUSQUEDA):
+- "mixto" (por defecto): si la frase nombra un tema de la base (un juego, una receta, un
+  trámite...), se busca antes de llamar al modelo y el documento va en el mensaje. Si no,
+  el modelo tiene la herramienta y decide él si buscar. Así lo que está en la base se usa
+  siempre, y lo que las palabras clave no detectan lo puede pedir el modelo.
+- "modelo": el modelo decide cuándo buscar. Tiene una herramienta
   buscar_conocimiento y la llama solo si la necesita (reglas, recetas, trámites...).
   En la charla normal no se busca nada y la respuesta sale de una sola pasada.
 - "umbral": se busca en cada turno, pero un trozo solo entra si se parece mucho
@@ -40,7 +44,7 @@ OPCIONES = {"think": PENSAR == "true"} if PENSAR in ("true", "false") else {}
 
 # Servicio de conocimiento (RAG). Vacío = no se usa.
 CONOCIMIENTO_URL = os.getenv("CONOCIMIENTO_URL", "")
-MODO_BUSQUEDA = os.getenv("MODO_BUSQUEDA", "modelo")   # "modelo" o "umbral"
+MODO_BUSQUEDA = os.getenv("MODO_BUSQUEDA", "mixto")   # "mixto", "modelo" o "umbral"
 UMBRAL = float(os.getenv("UMBRAL", "0.5"))     # parecido mínimo (0 a 1) para usar un trozo
 UMBRAL_ALTO = float(os.getenv("UMBRAL_ALTO", "0.68"))  # modo umbral: sin palabra clave hace falta más parecido
 K = int(os.getenv("K", "1"))                   # cuántos trozos pedir como máximo
@@ -48,6 +52,7 @@ K_HERRAMIENTA = int(os.getenv("K_HERRAMIENTA", "2"))  # modo modelo: trozos por 
 # Tope de tokens por respuesta, por si el modelo se alarga (0 = sin tope). Si lo alcanza,
 # se descarta la última frase a medias para que Bufit no se corte en mitad de una palabra.
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "110"))
+MAX_TOKENS_DOC = int(os.getenv("MAX_TOKENS_DOC", "220"))   # tope cuando explica algo de la base
 
 # Frases de relleno (se releen en cada uso: se pueden editar sin reiniciar)
 FICHERO_RELLENOS = os.getenv("FICHERO_RELLENOS", "/app/rellenos.json")
@@ -60,7 +65,8 @@ Tu especialidad son los juegos de mesa y de cartas: te encanta hablar de ellos, 
 
 Lo que sabes y lo que no:
 - De temas generales puedes hablar con lo que sabes. Si no estás seguro de un dato concreto, como una fecha, una cifra o un nombre, dilo con naturalidad en vez de inventarlo.
-- No sabes qué tiempo hace, qué día es ni las noticias de hoy. Si hace falta, pregúntalo.
+- No sabes qué tiempo hace ni hará, qué día es ni las noticias de hoy. Si te preguntan algo así, responde algo como: "Eso no lo sé, mejor míralo en la radio o en el móvil." No te ofrezcas a mirarlo tú.
+- No tienes internet ni puedes usar el móvil de nadie. Nunca te ofrezcas a buscar nada, ni a hacerlo tú, ni preguntes si quieren que lo busques.
 - De la vida de la persona solo sabes lo que te cuente en esta conversación. No inventes nada sobre ella ni sobre su familia.
 - No tienes una vida propia: no cuentes cosas que hayas hecho, comido o visto.
 - Solo puedes hablar: no puedes enseñar fotos, poner música, llamar a nadie, dar comida o bebida ni hacer nada fuera de esta conversación. No lo ofrezcas.
@@ -68,10 +74,15 @@ Lo que sabes y lo que no:
 - Para trámites, ayudas, salud o dinero, si no tienes la información, no la supongas: recomienda preguntar en el ayuntamiento, en el centro de salud o en la web oficial.
 
 Cómo hablas:
-- Siempre en español de España y en primera persona. Nunca hables de ti como "Bufit" en tercera persona.
+- Siempre en español de España y en primera persona. Tú eres Bufit: nunca llames "Bufit" a la persona. Llámala por su nombre solo de vez en cuando, no en cada respuesta.
 - Tus respuestas se leen en voz alta: frases cortas, claras y cálidas, sin listas, emojis, asteriscos ni símbolos, ni onomatopeyas como mmm o hmm.
 - Responde con una o dos frases como mucho. Es una charla, no una explicación: mejor corto y que la persona siga hablando.
-- Si encaja, termina con una sola pregunta corta. No siempre hace falta preguntar.
+- Si encaja, termina con una sola pregunta corta. No siempre hace falta preguntar: a veces basta con comentar lo que te han dicho. No termines siempre con "¿te gustaría que...?" ni ofrezcas recetas o consejos en cada turno.
+- No preguntes lo que ya sabes: si la persona ya te ha dicho su nombre o dónde vive, úsalo.
+- Si te piden algo (una recomendación, una receta, una explicación), dalo directamente en esa misma respuesta. No preguntes "¿te gustaría que te...?" antes de darlo. Y si la persona ya ha dicho que sí, hazlo, no vuelvas a preguntar.
+- Si la persona te corrige o se queja de lo que has dicho, reconoce el error en pocas palabras y responde de otra manera. Nunca repitas una respuesta que ya has dado.
+- En la charla normal, sé breve.
+- Cuando expliques unas reglas, una receta o un trámite con información de tu base, da siempre una explicación completa de cuatro o cinco frases con los datos importantes (para un juego: con qué se juega, cómo se reparte, cómo se juega cada turno y cómo se gana). Hazlo así aunque te pidan "una frase" o algo corto: para estas personas una explicación de una frase no sirve. Después pregunta si quiere que sigas.
 - No uses frases de relleno ni fórmulas repetidas, como "me encantaría oír tu experiencia" o empezar siempre con "¡qué bien que...!". Varía cómo empiezas.
 - Un poco de humor muy de vez en cuando: la mayoría de respuestas no llevan broma. No escribas risas como jaja. Nunca bromeas si la persona está triste o habla de algo serio como la salud o una pérdida.
 - Si no entiendes lo que te dicen o la frase no tiene sentido, pregunta qué ha querido decir."""
@@ -84,7 +95,9 @@ Tu base de conocimientos:
 - No la uses para saludar, charlar, hablar de sentimientos o de temas generales.
 - La búsqueda es interna: úsala directamente cuando la necesites. Nunca digas que vas a buscar, ni preguntes si quieres que busques, ni ofrezcas buscar en internet: no tienes internet.
 - Cuando uses lo que encuentres, copia exactamente las fechas, plazos, cantidades y teléfonos, y no añadas datos que no estén ahí. En un trámite, di de dónde sale la información, por ejemplo: "según la información que tengo del Imserso".
-- Si la búsqueda no trae lo que te han preguntado, dilo con sencillez.
+- Nunca menciones tu base de conocimientos ni digas que has buscado algo.
+- Si no encuentras nada útil: en trámites, ayudas, salud o dinero, di que no lo sabes y recomienda dónde preguntar. En lo demás, como una receta sencilla o un consejo, responde con lo que sepas.
+- A veces el mensaje de la persona ya llega con información de tu base entre corchetes. Si responde a lo que te preguntan, úsala y no busques más. Si no tiene que ver, ignórala sin mencionarla.
 - Las recetas y las reglas se explican poco a poco, un paso cada vez, preguntando si quiere que sigas."""
 
 PROMPT_CORCHETES = """
@@ -97,7 +110,7 @@ Tu base de conocimientos:
 
 if not CONOCIMIENTO_URL:
     _extra = ""
-elif MODO_BUSQUEDA == "modelo":
+elif MODO_BUSQUEDA in ("modelo", "mixto"):
     _extra = PROMPT_HERRAMIENTA
 else:
     _extra = PROMPT_CORCHETES
@@ -125,7 +138,7 @@ HERRAMIENTA_BUSCAR = {
         },
     },
 }
-HERRAMIENTAS = [HERRAMIENTA_BUSCAR] if CONOCIMIENTO_URL and MODO_BUSQUEDA == "modelo" else None
+HERRAMIENTAS = [HERRAMIENTA_BUSCAR] if CONOCIMIENTO_URL and MODO_BUSQUEDA in ("modelo", "mixto") else None
 
 app = FastAPI(title="Bufit LLM")
 cliente = Client(host=OLLAMA_HOST)
@@ -238,15 +251,15 @@ def buscar_conocimiento(historial: list[dict]) -> list[dict]:
 
 # Temas de la base de conocimientos (sin tildes, en minúsculas; vale con el principio de la palabra)
 PALABRAS_CLAVE = re.compile(r"\b(" + "|".join([
-    "jueg", "jug", "regla", "carta", "baraja", "partida", "ficha", "domino", "parchis", "brisca",
+    "jueg", "jug", "regla", "carta", "baraja", "ficha", "domino", "parchis", "brisca",
     "tute", "mus", "chinchon", "escoba", "cinquillo", "rumi", "oca", "ajedrez", "damas", "bingo",
     "poker", "siete y medio", "blackjack", "tres en raya",
-    "receta", "cocin", "guis", "ingrediente", "paella", "arroz", "fideua", "postre", "plato",
-    "tramite", "ayuda", "pension", "imserso", "dependencia", "teleasistencia", "tarjeta",
+    "receta", "cocin", "guis", "ingrediente", "paella", "arroz", "fideua", "postre",
+    "tramite", "pension", "imserso", "dependencia", "teleasistencia", "tarjeta",
     "certificado", "clave", "copago", "renfe", "termalismo", "voluntades",
     "fiesta", "falla", "hoguera", "moros", "tomatina", "magdalena", "san juan", "semana santa",
-    "xabia", "javea", "montgo", "riurau", "molino", "refran", "dicho",
-    "movil", "whatsapp", "videollamada", "contacto", "emergencia",
+    "montgo", "riurau", "molino", "refran",
+    "movil", "whatsapp", "videollamada", "emergencia",
     "salud", "caida", "dieta", "estafa", "timo",
 ]) + r")")
 
@@ -286,11 +299,21 @@ def preparar(partida: str, texto: str):
     historial = historiales.setdefault(partida, [])
     historial.append({"role": "user", "content": texto})
 
-    if MODO_BUSQUEDA == "modelo":
-        # Busca el propio modelo con la herramienta, si lo necesita (ver responder())
+    if MODO_BUSQUEDA in ("modelo", "mixto"):
+        trozos, fuentes = [], []
+        if MODO_BUSQUEDA == "mixto" and CONOCIMIENTO_URL and PALABRAS_CLAVE.search(sin_tildes(texto)):
+            # Nombra un tema de la base: se busca ya, sin esperar a que el modelo lo pida
+            trozos = buscar(texto, K)       # K pequeño: en CPU, cada trozo cuesta segundos de lectura
+            if trozos:
+                print(f"[mixto] {texto!r} → {[t['titulo'] for t in trozos]}", flush=True)
+                # Se guarda así en el historial: el documento sigue ahí en el turno siguiente
+                # ("sí, sigue") y el principio del prompt no cambia (la caché sigue sirviendo)
+                historial[-1] = {"role": "user", "content": con_contexto(texto, trozos)}
+                fuentes = [{"titulo": t["titulo"], "puntuacion": t["puntuacion"]} for t in trozos]
+        # Si no, busca el propio modelo con la herramienta, si lo necesita (ver responder())
         recientes = historial[-MAX_MENSAJES:] if MAX_MENSAJES else historial
         mensajes = [{"role": "system", "content": SISTEMA}] + recientes
-        return historial, recientes, mensajes, [], []
+        return historial, recientes, mensajes, fuentes, trozos
 
     trozos = buscar_conocimiento(historial)
     if trozos:
@@ -321,7 +344,9 @@ def ejecutar_busqueda(consulta: str) -> tuple[str, list[dict]]:
     trozos = buscar(consulta, K_HERRAMIENTA) if consulta.strip() else []
     print(f"[herramienta] buscar_conocimiento({consulta!r}) → {[t['titulo'] for t in trozos]}", flush=True)
     if not trozos:
-        return "No hay información sobre eso en la base de conocimientos.", []
+        return ("No hay nada sobre eso. Si es un trámite, una ayuda, la salud o el dinero, di que no lo "
+                "sabes y recomienda dónde preguntar. Si no, responde con lo que sepas. "
+                "No digas que has buscado."), []
     texto = "\n\n".join(f"{t['titulo']}:\n{t['texto'].split(chr(10), 2)[-1].strip()}" for t in trozos)
     return texto, [{"titulo": t["titulo"], "puntuacion": t["puntuacion"], "consulta": consulta} for t in trozos]
 
@@ -341,7 +366,9 @@ def responder(partida: str, historial: list[dict], mensajes: list[dict], fuentes
     try:
         for paso in range(3):                    # como mucho dos búsquedas por turno
             llamadas, texto_paso = [], ""
-            limite = {"options": {"num_predict": MAX_TOKENS}} if MAX_TOKENS else {}
+            # Con documento delante puede extenderse más (reglas, recetas, trámites)
+            tope = MAX_TOKENS_DOC if fuentes else MAX_TOKENS
+            limite = {"options": {"num_predict": tope}} if tope else {}
             for trozo in cliente.chat(model=MODELO, messages=mensajes, stream=True,
                                       tools=HERRAMIENTAS, **limite, **OPCIONES):
                 if trozo.message.tool_calls:
